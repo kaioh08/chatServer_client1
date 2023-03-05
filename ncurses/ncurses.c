@@ -29,6 +29,8 @@ void draw_ui();
 
 void chats_window();
 
+bool confirm_exit();
+
 void init_pairs()
 {
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
@@ -455,7 +457,11 @@ void draw_buttons() {
                 if (event.y == start_y && event.x >= start_x - 10 && event.x <= start_x - 2) {
                     clear();
                     refresh();
-                    login_window();
+                    // prompt user to confirm exit
+                    if (confirm_exit()) {
+                        login_window();
+                    }
+                    chat_window();
                 } else if (event.y == start_y && event.x >= start_x - 20 && event.x <= start_x - 12) {
                     clear();
                     refresh();
@@ -474,6 +480,45 @@ void draw_buttons() {
             }
         }
     }
+}
+
+bool confirm_exit()
+{
+    int height, width, start_y, start_x;
+
+    // get the dimensions of the chat window
+    getmaxyx(stdscr, height, width);
+
+    // calculate the start position of the chat window
+    start_y = (height - 5) / 2;
+    start_x = (width - 40) / 2;
+
+    // set the color pair and attributes for the input box
+    attron(COLOR_PAIR(2));
+    attron(A_BOLD);
+
+    // draw the input box
+    mvprintw(start_y + 1, start_x + 2, "Are you sure you want to exit? (y/n) ");
+    clrtoeol();
+    attroff(A_BOLD);
+    attroff(COLOR_PAIR(2));
+
+    // move cursor to the right of the prompt
+    int cur_y, cur_x;
+    getyx(stdscr, cur_y, cur_x);
+    move(cur_y, cur_x + 2);
+
+    // get user input
+    char input[3];
+    getnstr(input, 3);
+
+    // if user enters 'y', return true
+    if (input[0] == 'y') {
+        return true;
+    }
+
+    // else return false
+    return 0;
 }
 
 void create_chat_window()
