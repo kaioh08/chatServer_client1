@@ -58,8 +58,7 @@ void create_packet(char named, char* display_name, char* password) {
             perror("Error: failed to send packet");
             return -1;
         }
-
-        close(sock); // Close socket
+        close(sock);
         return 0;
     }
 }
