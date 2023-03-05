@@ -37,5 +37,29 @@ void create_packet(char named, char* display_name, char* password) {
     packet.password[MAX_PASSWORD_LENGTH] = '\0';
 
     // send packet over TCP connection
-    // TODO: implement TCP connection and send packet code
+    int send_packet(char* packet, char* server_ip, int server_port) {
+        int sock = socket(AF_INET, SOCK_STREAM, 0); // Create TCP socket
+        if (sock == -1) {
+            perror("Error: failed to create socket");
+            return -1;
+        }
+
+        struct sockaddr_in server;
+        server.sin_addr.s_addr = inet_addr(server_ip);
+        server.sin_family = AF_INET;
+        server.sin_port = htons(server_port);
+
+        if (connect(sock, (struct sockaddr*) &server, sizeof(server)) < 0) { // Connect to server
+            perror("Error: connection failed");
+            return -1;
+        }
+
+        if (send(sock, packet, strlen(packet), 0) < 0) { // Send packet
+            perror("Error: failed to send packet");
+            return -1;
+        }
+
+        close(sock); // Close socket
+        return 0;
+    }
 }
