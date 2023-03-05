@@ -34,6 +34,9 @@ void init_pairs()
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     init_pair(2, COLOR_RED, COLOR_BLACK);
     init_pair(3, COLOR_BLACK, COLOR_WHITE);
+    // init pair white on red
+    init_pair(4, COLOR_WHITE, COLOR_RED);
+    init_pair(5, COLOR_RED, COLOR_WHITE);
 }
 
 static void login_window() {
@@ -211,10 +214,7 @@ void update_user_profile() {
     // draw the login name input field
     mvprintw(start_y + 1, start_x + 2, "Login name: ");
     char login_input[INPUT_WIDTH];
-    echo();
-    getnstr(login_input, INPUT_WIDTH - 1);
-    noecho();
-    clrtoeol();
+
 
     // draw the save button for login name
     attron(COLOR_PAIR(3));
@@ -226,10 +226,7 @@ void update_user_profile() {
     // draw the password input field
     mvprintw(start_y + 2, start_x + 2, "Password: ");
     char password_input[INPUT_WIDTH];
-    echo();
-    getnstr(password_input, INPUT_WIDTH - 1);
-    noecho();
-    clrtoeol();
+
 
     // draw the save button for password
     attron(COLOR_PAIR(3));
@@ -240,11 +237,9 @@ void update_user_profile() {
 
     // draw the display name input field
     mvprintw(start_y + 3, start_x + 2, "Display name: ");
+
     char display_input[INPUT_WIDTH];
-    echo();
-    getnstr(display_input, INPUT_WIDTH - 1);
-    noecho();
-    clrtoeol();
+
 
     // draw the save button for display name
     attron(COLOR_PAIR(3));
@@ -254,15 +249,19 @@ void update_user_profile() {
     attroff(COLOR_PAIR(3));
 
     // draw the logout button
-    attron(COLOR_PAIR(1));
+    attron(COLOR_PAIR(5));
     attron(A_REVERSE);
     mvprintw(start_y + 7, start_x + 15, " Logout ");
     attroff(A_REVERSE);
-    attroff(COLOR_PAIR(1));
+    attroff(COLOR_PAIR(5));
 
     // move the cursor to the first input field
     move(start_y + 1, start_x + 15);
-
+    mvgetnstr(start_y + 1, start_x + 15, login_input, INPUT_WIDTH - 1);
+    mvgetnstr(start_y + 2, start_x + 15, password_input, INPUT_WIDTH - 1);
+    mvgetnstr(start_y + 3, start_x + 15, display_input, INPUT_WIDTH - 1);
+    // enable mouse events
+    mousemask(ALL_MOUSE_EVENTS, NULL);
     // wait for user input
     int ch;
     while ((ch = getch()) != KEY_F(10)) {
