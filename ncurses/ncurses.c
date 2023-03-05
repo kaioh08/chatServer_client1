@@ -23,7 +23,11 @@ void draw_input_box();
 void clear_input_box(char *input, int input_len, int buf_size);
 void handle_input();
 void add_message(char *input, char *username);
+void create_chat_window();
+void draw_ui();
 
+
+void chats_window();
 
 void init_pairs()
 {
@@ -184,11 +188,118 @@ static void register_window()
         }
     }
 
-
-
     refresh();
 
 }
+
+void update_user_profile() {
+    int height, width, start_y, start_x;
+
+    // get the dimensions of the window
+    getmaxyx(stdscr, height, width);
+
+    // calculate the start position of the window
+    start_y = (height - 10) / 2;
+    start_x = (width - 40) / 2;
+
+    box(stdscr, start_y + 9, start_x + 40);
+
+    // set the color pair and attributes for the input fields and buttons
+    attron(COLOR_PAIR(2));
+    attron(A_BOLD);
+
+    // draw the login name input field
+    mvprintw(start_y + 1, start_x + 2, "Login name: ");
+    char login_input[INPUT_WIDTH];
+    echo();
+    getnstr(login_input, INPUT_WIDTH - 1);
+    noecho();
+    clrtoeol();
+
+    // draw the save button for login name
+    attron(COLOR_PAIR(3));
+    attron(A_REVERSE);
+    mvprintw(start_y + 1, start_x + 30, " Save ");
+    attroff(A_REVERSE);
+    attroff(COLOR_PAIR(3));
+
+    // draw the password input field
+    mvprintw(start_y + 2, start_x + 2, "Password: ");
+    char password_input[INPUT_WIDTH];
+    echo();
+    getnstr(password_input, INPUT_WIDTH - 1);
+    noecho();
+    clrtoeol();
+
+    // draw the save button for password
+    attron(COLOR_PAIR(3));
+    attron(A_REVERSE);
+    mvprintw(start_y + 2, start_x + 30, " Save ");
+    attroff(A_REVERSE);
+    attroff(COLOR_PAIR(3));
+
+    // draw the display name input field
+    mvprintw(start_y + 3, start_x + 2, "Display name: ");
+    char display_input[INPUT_WIDTH];
+    echo();
+    getnstr(display_input, INPUT_WIDTH - 1);
+    noecho();
+    clrtoeol();
+
+    // draw the save button for display name
+    attron(COLOR_PAIR(3));
+    attron(A_REVERSE);
+    mvprintw(start_y + 3, start_x + 30, " Save ");
+    attroff(A_REVERSE);
+    attroff(COLOR_PAIR(3));
+
+    // draw the logout button
+    attron(COLOR_PAIR(1));
+    attron(A_REVERSE);
+    mvprintw(start_y + 7, start_x + 15, " Logout ");
+    attroff(A_REVERSE);
+    attroff(COLOR_PAIR(1));
+
+    // move the cursor to the first input field
+    move(start_y + 1, start_x + 15);
+
+    // wait for user input
+    int ch;
+    while ((ch = getch()) != KEY_F(10)) {
+        if (ch == KEY_MOUSE) {
+            MEVENT event;
+            if (getmouse(&event) == OK) {
+                // check if a save button was clicked and save the corresponding input field
+                if (event.bstate & BUTTON1_CLICKED) {
+                    if (event.y == start_y + 1 && event.x >= start_x + 30 && event.x <= start_x + 35) {
+                        // save the login name
+                        // save_login_name(login_input);
+                    } else if (event.y == start_y + 2 && event.x >= start_x + 30 && event.x <= start_x + 35) {
+                        // save the password
+                        // save_password(password_input);
+                    } else if (event.y == start_y + 3 && event.x >= start_x + 30 && event.x <= start_x + 35) {
+                        // save the display name
+                        // save_display_name(display_input);
+                    } else if (event.y == start_y + 7 && event.x >= start_x + 15 && event.x <= start_x + 22) {
+                        // logout
+                        login_window();
+                    }
+                }
+
+                // check if a input field was clicked and move the cursor to it
+                if (event.y == start_y + 1 && event.x >= start_x + 15 && event.x <= start_x + 29) {
+                    move(start_y + 1, start_x + 15);
+                } else if (event.y == start_y + 2 && event.x >= start_x + 15 && event.x <= start_x + 29) {
+                    move(start_y + 2, start_x + 15);
+                } else if (event.y == start_y + 3 && event.x >= start_x + 15 && event.x <= start_x + 29) {
+                    move(start_y + 3, start_x + 15);
+                }
+            }
+        }
+    }
+}
+
+
 
 /**
  * Gets the text from the input box and returns it as a string.
@@ -310,11 +421,11 @@ void draw_buttons() {
     start_x = width - 14;
 
     // set the color pair, attributes, and text for the Send button
-    attron(COLOR_PAIR(2));
+    attron(COLOR_PAIR(3));
     attron(A_BOLD | A_UNDERLINE | A_REVERSE);
-    mvprintw(start_y, start_x, "Send");
+    mvprintw(start_y, start_x, "Create");
     attroff(A_BOLD | A_UNDERLINE | A_REVERSE);
-    attroff(COLOR_PAIR(2));
+    attroff(COLOR_PAIR(3));
 
     // set the color pair, attributes, and text for the Exit button
     attron(COLOR_PAIR(2));
@@ -333,7 +444,7 @@ void draw_buttons() {
     // set the color pair, attributes, and text for the Exit button
     attron(COLOR_PAIR(3));
     attron(A_BOLD | A_UNDERLINE | A_REVERSE);
-    mvprintw(start_y, start_x - 30, "Friends");
+    mvprintw(start_y, start_x - 30, "Update");
     attroff(A_BOLD | A_UNDERLINE | A_REVERSE);
     attroff(COLOR_PAIR(3));
 
@@ -346,11 +457,107 @@ void draw_buttons() {
                     clear();
                     refresh();
                     login_window();
+                } else if (event.y == start_y && event.x >= start_x - 20 && event.x <= start_x - 12) {
+                    clear();
+                    refresh();
+//                    chats_window();
+                } else if (event.y == start_y && event.x >= start_x - 30 && event.x <= start_x - 22) {
+                    clear();
+                    refresh();
+                    update_user_profile();
+                }
+                    // else if user clicks on the Create button, create a chat
+                else if (event.y == start_y && event.x >= start_x && event.x <= start_x + 6) {
+                    clear();
+                    refresh();
+                    create_chat_window();
                 }
             }
         }
     }
 }
+
+void create_chat_window()
+{
+    int height, width, start_y, start_x;
+
+    // get the dimensions of the chat window
+    getmaxyx(stdscr, height, width);
+
+    // calculate the start position of the chat window
+    start_y = (height - 5) / 2;
+    start_x = (width - 40) / 2;
+
+    box(stdscr, start_y, start_x);
+
+    // set the color pair and attributes for the input box
+    attron(COLOR_PAIR(2));
+    attron(A_BOLD);
+
+    // draw the input box
+    mvprintw(start_y + 1, start_x + 2, "Enter the name of the chat: ");
+    clrtoeol();
+    attroff(A_BOLD);
+    attroff(COLOR_PAIR(2));
+    // move cursor to the right of the prompt
+    int cur_y, cur_x;
+    getyx(stdscr, cur_y, cur_x);
+    move(cur_y, cur_x);
+
+    // draw the name input field
+    echo();
+    char name_input[INPUT_WIDTH];
+    getnstr(name_input, INPUT_WIDTH - 1);
+
+    // draw the private/public prompt
+    mvprintw(start_y + 2, start_x + 2 , "Is this chat private? (y/n): ");
+    clrtoeol();
+    move(start_y + 2, start_x + 2);
+
+    getyx(stdscr, cur_y, cur_x);
+    move(cur_y, cur_x + strlen("Is this chat private? (y/n): "));
+
+    // draw the private/public input field
+    char priv_input[INPUT_WIDTH];
+    getnstr(priv_input, INPUT_WIDTH - 1);
+    // draw the Save and Cancel buttons
+    attron(COLOR_PAIR(3));
+    attron(A_REVERSE);
+    mvprintw(start_y + 4, start_x + 12, " Save ");
+    mvprintw(start_y + 4, start_x + 23, " Cancel ");
+    attroff(A_REVERSE);
+    attroff(COLOR_PAIR(3));
+
+    // move the cursor to the input box
+    move(start_y + 1, start_x + 25);
+
+    // if user clicks on the Save button, save the chat
+    if (getch() == KEY_MOUSE) {
+        MEVENT event;
+        if (getmouse(&event) == OK) {
+            if (event.bstate & BUTTON1_CLICKED) {
+                if (event.y == start_y + 4 && event.x >= start_x + 12 && event.x <= start_x + 17) {
+                    clear();
+                    refresh();
+                    // save the chat
+                    // save_chat(name_input, priv_input);
+                    // draw the chat window
+                }
+                    // else if user clicks on the Cancel button, return to the chat window
+                else if (event.y == start_y + 4 && event.x >= start_x + 23 && event.x <= start_x + 29) {
+                    clear();
+                    refresh();
+                    // draw the chat window
+                    chat_window();
+                }
+            }
+        }
+    }
+
+    refresh();
+}
+
+
 
 void draw_input_box() {
     int height, width, start_y, start_x;
