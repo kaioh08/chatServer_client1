@@ -690,4 +690,5 @@ int main()
     login_window();
     endwin();
     return 0;
+
 }
