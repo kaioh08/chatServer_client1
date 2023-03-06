@@ -14,7 +14,7 @@ struct Packet {               // packet structure for registering
     char password[MAX_PASSWORD_LENGTH + 1];
 };
 
-void create_packet(char named, char* display_name, char* password) {
+void create_packet(char* named, char* display_name, char* password) {
     struct Packet packet;
 
     // check named length
@@ -30,7 +30,7 @@ void create_packet(char named, char* display_name, char* password) {
     }
 
     // copy arguments to packet fields
-    snprintf(packet.named, sizeof(packet.named), "%d", named);
+    snprintf(packet.named, sizeof(packet.named), "%s", named);
     strncpy(packet.display_name, display_name, MAX_NAMED_LENGTH);
     packet.display_name[MAX_NAMED_LENGTH] = '\0';
     strncpy(packet.password, password, MAX_PASSWORD_LENGTH);
