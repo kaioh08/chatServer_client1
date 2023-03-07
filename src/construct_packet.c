@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 // maximum length for named and password
 #define MAX_NAMED_LENGTH 20
@@ -13,6 +14,9 @@ struct Packet {               // packet structure for registering
     char display_name[MAX_NAMED_LENGTH + 1];
     char password[MAX_PASSWORD_LENGTH + 1];
 };
+
+void create_packet(char* named, char* display_name, char* password);
+int send_packet(char* packet, char* server_ip, int server_port);
 
 void create_packet(char* named, char* display_name, char* password) {
     struct Packet packet;
