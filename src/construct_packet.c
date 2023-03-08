@@ -49,8 +49,8 @@ struct base_packet {
 };
 
 void create_packet(char* named, char* display_name, char* password);
-void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password, size_t *size_of_body);
-size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet, const size_t *size_of_body);
+void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password);
+size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet);
 int send_packet(char* packet, char* server_ip, int server_port);
 
 void create_packet(char* named, char* display_name, char* password) {
@@ -76,8 +76,9 @@ void create_packet(char* named, char* display_name, char* password) {
     packet.password[MAX_PASSWORD_LENGTH] = '\0';
 }
 
-void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password, size_t *size_of_body)
+void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password)
 {
+    size_t size_of_body;
     char *body;
 
     packet = dc_malloc(env, err, sizeof(struct base_packet));
@@ -90,12 +91,13 @@ void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_
     packet->object = OBJECT_USER;
 
     //sum up the size of each field + the \3 character
-    *size_of_body = strlen(login_token)+1;
-    *size_of_body += strlen(display_name)+1;
-    *size_of_body += strlen(password)+1;
+    size_of_body = strlen(login_token)+1;
+    size_of_body += strlen(display_name)+1;
+    size_of_body += strlen(password)+1;
+    packet->size = size_of_body;
 
     //copy each field to the body
-    body = dc_malloc(env, err, (*size_of_body)*sizeof(char));
+    body = dc_malloc(env, err, size_of_body*sizeof(char));
     if(dc_error_has_error(err))
     {
         fprintf(stderr, "ERROR: %s \n", dc_error_get_message(err)); //NOLINT(cert-err33-c)
@@ -113,13 +115,13 @@ void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_
     free(body);
 }
 
-size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet, const size_t *size_of_body)
+size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet)
 {
     size_t packet_size;
     size_t current_pos;
 
     packet_size = BASE_HEADER_SIZE;
-    packet_size += *size_of_body;
+    packet_size += packet->size;
 
     current_pos = 0;
 
@@ -128,15 +130,15 @@ size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct b
     {
         return 0;
     }
-    //TODO: add packet->version to serialized_packet
+    memcpy(&serialized_packet[current_pos], &packet->version, VERSION_SIZE);
     current_pos += VERSION_SIZE;
-    //TODO: add packet->type to serialized_packet
+    memcpy(&serialized_packet[current_pos], &packet->type, TYPE_SIZE);
     current_pos += TYPE_SIZE;
-    //TODO: add packet->object to serialized_packet
+    memcpy(&serialized_packet[current_pos], &packet->object, OBJECT_SIZE);
     current_pos += OBJECT_SIZE;
-    //TODO: add packet->size to serialized_packet
+    memcpy(&serialized_packet[current_pos], &packet->size, SIZE_SIZE);
     current_pos += SIZE_SIZE;
-    //TODO: add packet->body to serialized_packet
+    memcpy(&serialized_packet[current_pos], &packet->body, packet->size);
 
     return packet_size;
 }
