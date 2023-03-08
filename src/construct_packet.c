@@ -18,17 +18,21 @@
 #define TYPE_SIZE 4
 #define OBJECT_SIZE 8
 #define SIZE_SIZE 16
-#define BASE_PACKET_SIZE 32
+#define BASE_HEADER_SIZE 32
 
-#define TYPE_CREATE 1
-#define TYPE_READ 2
-#define TYPE_UPDATE 3
-#define TYPE_DESTROY 4
+enum types {
+    TYPE_CREATE = 1,
+    TYPE_READ,
+    TYPE_UPDATE,
+    TYPE_DESTROY
+};
 
-#define OBJECT_USER 1
-#define OBJECT_CHANNEL 2
-#define OBJECT_MESSAGE 3
-#define OBJECT_AUTH 4
+enum objects {
+    OBJECT_USER = 1,
+    OBJECT_CHANNEL,
+    OBJECT_MESSAGE,
+    OBJECT_AUTH
+};
 
 struct Packet {               // packet structure for registering
     char named[MAX_NAMED_LENGTH + 1];
@@ -41,16 +45,12 @@ struct base_packet {
     uint8_t type;
     uint8_t object;
     uint16_t size;
-};
-
-struct register_packet {
-    struct base_packet *base_packet;
-    char *body;
+    uint8_t *body;
 };
 
 void create_packet(char* named, char* display_name, char* password);
-void create_register_packet(struct dc_env *env, struct dc_error *err, struct register_packet *packet, char *login_token, char *display_name, char *password);
-size_t serialize_packet(struct dc_env *env, struct dc_error *err, void *packet, uint8_t *serialized_packet, size_t *size);
+void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password, size_t *size_of_body);
+size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet, const size_t *size_of_body);
 int send_packet(char* packet, char* server_ip, int server_port);
 
 void create_packet(char* named, char* display_name, char* password) {
@@ -76,33 +76,67 @@ void create_packet(char* named, char* display_name, char* password) {
     packet.password[MAX_PASSWORD_LENGTH] = '\0';
 }
 
-void create_register_packet(struct dc_env *env, struct dc_error *err, struct register_packet *packet, char *login_token, char *display_name, char *password)
+void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password, size_t *size_of_body)
 {
-    packet = dc_malloc(env, err, sizeof(struct register_packet));
-    if(dc_error_has_error(err))
-    {
-        fprintf(stderr, "ERROR: %s \n", dc_error_get_message(err)); //NOLINT(cert-err33-c)
-    }
-    packet->base_packet = dc_malloc(env, err, sizeof(struct base_packet));
-    if(dc_error_has_error(err))
-    {
-        fprintf(stderr, "ERROR: %s \n", dc_error_get_message(err)); //NOLINT(cert-err33-c)
-    }
-    packet->base_packet->version = CURRENT_VERSION;
-    packet->base_packet->type = TYPE_CREATE;
-    packet->base_packet->object = OBJECT_USER;
+    char *body;
 
-    //TODO: append the login_token, display_name, and password tgt to form the body
-    //TODO: copy size of body to packet->base_packet->size
+    packet = dc_malloc(env, err, sizeof(struct base_packet));
+    if(dc_error_has_error(err))
+    {
+        fprintf(stderr, "ERROR: %s \n", dc_error_get_message(err)); //NOLINT(cert-err33-c)
+    }
+    packet->version = CURRENT_VERSION;
+    packet->type = TYPE_CREATE;
+    packet->object = OBJECT_USER;
+
+    //sum up the size of each field + the \3 character
+    *size_of_body = strlen(login_token)+1;
+    *size_of_body += strlen(display_name)+1;
+    *size_of_body += strlen(password)+1;
+
+    //copy each field to the body
+    body = dc_malloc(env, err, (*size_of_body)*sizeof(char));
+    if(dc_error_has_error(err))
+    {
+        fprintf(stderr, "ERROR: %s \n", dc_error_get_message(err)); //NOLINT(cert-err33-c)
+    }
+    strcat(body, login_token);
+    strcat(body, "\3");
+    strcat(body, display_name);
+    strcat(body, "\3");
+    strcat(body, password);
+    strcat(body, "\3");
+
+    //duplicate body into packet->body
+    packet->body = (uint8_t*) strdup(body);
+
+    free(body);
 }
 
-size_t serialize_packet(struct dc_env *env, struct dc_error *err, void *packet, uint8_t *serialized_packet, size_t *size)
+size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet, const size_t *size_of_body)
 {
     size_t packet_size;
-    packet_size = 0;
+    size_t current_pos;
 
-    dc_realloc(env, err, serialized_packet, BASE_PACKET_SIZE);
-    //TODO: serialize the packet
+    packet_size = BASE_HEADER_SIZE;
+    packet_size += *size_of_body;
+
+    current_pos = 0;
+
+    dc_realloc(env, err, serialized_packet, packet_size);
+    if(dc_error_has_error(err))
+    {
+        return 0;
+    }
+    //TODO: add packet->version to serialized_packet
+    current_pos += VERSION_SIZE;
+    //TODO: add packet->type to serialized_packet
+    current_pos += TYPE_SIZE;
+    //TODO: add packet->object to serialized_packet
+    current_pos += OBJECT_SIZE;
+    //TODO: add packet->size to serialized_packet
+    current_pos += SIZE_SIZE;
+    //TODO: add packet->body to serialized_packet
 
     return packet_size;
 }
