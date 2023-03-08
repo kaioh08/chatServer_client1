@@ -64,6 +64,9 @@ set(TEST_REQUIRED_LIBRARIES_LIST
 set(ECHO_SOURCE_LIST
         ${SOURCE_DIR}/construct_packet.c
         )
+set(ECHO_SOURCE_LIST
+        ${SOURCE_DIR}/main.c
+        )
 
 list(APPEND TEST_REQUIRED_LIBRARIES_LIST
         ${BINARY_REQUIRED_LIBRARIES_LIST}
