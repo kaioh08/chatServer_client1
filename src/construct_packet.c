@@ -8,10 +8,6 @@
 #include <dc_env/env.h>
 #include <dc_c/dc_stdlib.h>
 
-// maximum length for named and password
-#define MAX_NAMED_LENGTH 20
-#define MAX_PASSWORD_LENGTH 6
-
 #define CURRENT_VERSION 1
 
 #define VERSION_SIZE 4
