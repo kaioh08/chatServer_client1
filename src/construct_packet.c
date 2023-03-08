@@ -34,12 +34,6 @@ enum objects {
     OBJECT_AUTH
 };
 
-struct Packet {               // packet structure for registering
-    char named[MAX_NAMED_LENGTH + 1];
-    char display_name[MAX_NAMED_LENGTH + 1];
-    char password[MAX_PASSWORD_LENGTH + 1];
-};
-
 struct base_packet {
     uint8_t version;
     uint8_t type;
@@ -48,33 +42,9 @@ struct base_packet {
     uint8_t *body;
 };
 
-void create_packet(char* named, char* display_name, char* password);
 void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password);
 size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet);
 int send_packet(char* packet, char* server_ip, int server_port);
-
-void create_packet(char* named, char* display_name, char* password) {
-    struct Packet packet;
-
-    // check named length
-    if (strlen(named) > MAX_NAMED_LENGTH) {
-        printf("Error: Name is longer than maximum length of %d characters.\n", MAX_NAMED_LENGTH);
-        return;
-    }
-
-    // check password length
-    if (strlen(password) > MAX_PASSWORD_LENGTH) {
-        printf("Error: Password is longer than maximum length of %d characters.\n", MAX_PASSWORD_LENGTH);
-        return;
-    }
-
-    // copy arguments to packet fields
-    snprintf(packet.named, sizeof(packet.named), "%s", named);
-    strncpy(packet.display_name, display_name, MAX_NAMED_LENGTH);
-    packet.display_name[MAX_NAMED_LENGTH] = '\0';
-    strncpy(packet.password, password, MAX_PASSWORD_LENGTH);
-    packet.password[MAX_PASSWORD_LENGTH] = '\0';
-}
 
 void create_user_dispatch(struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password)
 {
