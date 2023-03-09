@@ -131,7 +131,7 @@ uint8_t *serialize_packet(const struct dc_env *env, struct dc_error *err, const 
     //TODO: fix this, for whatever reason after line 132, serialized_packet is still empty, and then an error occurs at line 134
     memcpy(serialized_packet, &header, sizeof(uint32_t));
     current_pos += sizeof(uint32_t);
-    memcpy(serialized_packet+current_pos, &packet->body, packet->size);
+    memcpy(serialized_packet+current_pos, packet->body, packet->size);
 
     return (uint8_t *) serialized_packet;
 }
@@ -173,6 +173,7 @@ int send_packet(const struct dc_env *env, struct dc_error *err, struct base_pack
 
     received_packet = NULL;
     serialized_packet = serialize_packet(env, err, packet, &packet_size);
+    printf("serialized_packet: %s\n", serialized_packet); //TODO: why is serialized_packet empty?????
 
     if (connect(sock, (struct sockaddr*) &server, sizeof(server)) < 0) { // Connect to server
         perror("Error: connection failed");
