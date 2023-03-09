@@ -182,3 +182,23 @@ int send_packet(char* packet, char* server_ip, int server_port) {
     close(sock);
     return 0;
 }
+
+int send_message(int recipient, char *message, int channel_id) {
+
+    // If recipient ID is not null, create a request packet with recipient ID and message
+    if (recipient != 0) {
+        // call packet_making function with recipient ID and message
+    }
+        // If channel ID is not null, create a packet with channel ID and message
+    else if (channel_id != 0) {
+        // call packet_making function with channel ID and message
+    }
+    else {
+        return -1;
+    }
+
+    // call send the packet to the server function here
+
+    return 0;
+}
+
