@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <dc_env/env.h>
 
 #define SERVER_PORT 4981
 #define BUF_SIZE 256
@@ -16,6 +17,23 @@ ssize_t read_fully(int fd, void *buffer, size_t len);
 
 int main(int argc, char *argv[])
 {
+    dc_env_tracer tracer;
+    struct dc_error * err;
+    struct dc_env * env;
+
+    // Set the tracer to trace through the function calls
+//    tracer = dc_env_default_tracer; // Trace through function calls
+    tracer = NULL; // Don't trace through function calls
+
+    err = dc_error_create(false); // Create error struct
+    env = dc_env_create(err, false, tracer); // Create environment struct
+
+    dc_env_set_tracer(env, *tracer); // Set tracer
+
+    //fork
+    //child handles (thread pool? of) requests and responses
+    //parent runs ui
+
     int sockfd;
     struct sockaddr_in server_addr;
     char buffer[BUF_SIZE];
