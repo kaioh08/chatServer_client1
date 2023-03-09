@@ -133,9 +133,11 @@ size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct b
 {
     size_t packet_size;
     size_t current_pos;
+    uint16_t temp;
 
     packet_size = BASE_HEADER_SIZE;
     packet_size += packet->size;
+    temp = htons(packet->size);
 
     current_pos = 0;
 
@@ -150,7 +152,7 @@ size_t serialize_packet(struct dc_env *env, struct dc_error *err, const struct b
     current_pos += TYPE_SIZE;
     memcpy(&serialized_packet[current_pos], &packet->object, OBJECT_SIZE);
     current_pos += OBJECT_SIZE;
-    memcpy(&serialized_packet[current_pos], &packet->size, SIZE_SIZE);
+    memcpy(&serialized_packet[current_pos], &temp, SIZE_SIZE);
     current_pos += SIZE_SIZE;
     memcpy(&serialized_packet[current_pos], &packet->body, packet->size);
 
@@ -179,6 +181,9 @@ int send_packet(char* packet, char* server_ip, int server_port) {
         perror("Error: failed to send packet");
         return -1;
     }
+
+    //TODO: receive packet
+
     close(sock);
     return 0;
 }
