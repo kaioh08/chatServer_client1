@@ -9,8 +9,9 @@
 
 
 WINDOW *main_window, *input_window, *chat_window, *chats_window, *user_profile_window, *login_window, *register_window,
-        *confirm_exit_window, *menu_window, *chat_window_box, *input_window_box, *menu_window_box;
-
+        *confirm_exit_window, *menu_window, *chat_window_box, *input_window_box, *menu_window_box, *user_list_window_box,
+        *user_list_window, *public_chat_window, *public_chat_window_box, *create_chat_window_box, *create_chat_window;
+WINDOW *user_settings_window_box, *user_settings_window;
 
 
 
@@ -273,13 +274,254 @@ void draw_menu_window()
     mousemask(ALL_MOUSE_EVENTS, NULL);
 
     // draw menu items
+    attron(A_BOLD);
+    attron(A_UNDERLINE);
     mvwprintw(menu_window, 1, 2, "My chats");
     mvwprintw(menu_window, 3, 2, "Online users");
     mvwprintw(menu_window, 5, 2, "Public chats");
     mvwprintw(menu_window, 7, 2, "Create chat");
     mvwprintw(menu_window, 9, 2, "Settings");
     wrefresh(menu_window);
+    attroff(A_BOLD);
+    attroff(A_UNDERLINE);
+    // handle input for menu items
+    int ch;
+    // while its in the menu window
+    while (true) {
+        MEVENT event;
+        ch = wgetch(menu_window);
+        if (ch == KEY_MOUSE) {
+            if (getmouse(&event) == OK) {
+                if (event.bstate & BUTTON1_CLICKED) {
+                    if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == 2) {
+                        // My chats button clicked
+                        clear();
+                        draw_public_chat_window();
+                    } else if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == 4) {
+                        // Online users button clicked
+                        clear();
+                        draw_user_list_window();
+                    } else if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == 6) {
+                        // Public chats button clicked
+                        clear();
+//                        draw_public_chat_list_window();
+                    } else if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == 8) {
+                        // Create chat button clicked
+                        clear();
+                        draw_create_chat_window();
+                    } else if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == 10) {
+                        // Settings button clicked
+                        clear();
+                        draw_user_settings_window();
+                    }
+                }
+            }
+        }
+    }
 
+}
+
+void draw_public_chat_window()
+{
+    // draw chat list window
+    public_chat_window_box = subwin(main_window, (LINES * 0.8), 25, 0, COLS - 25);
+    box(public_chat_window_box, 0, 0);
+    wrefresh(public_chat_window_box);
+    public_chat_window = subwin(public_chat_window_box, (LINES * 0.8) - 2, 23, 1, COLS - 24);
+
+    keypad(public_chat_window, TRUE);
+    mousemask(ALL_MOUSE_EVENTS, NULL);
+
+    // draw chat list items
+    // TODO: get chats from server and draw them here
+    for(int i = 0; i < 10; i++) {
+        mvwprintw(public_chat_window, i * 2, 2, "Chat %d", i);
+    }
+    wrefresh(public_chat_window);
+
+    // draw back button at the bottom of the window
+    mvwprintw(public_chat_window, (LINES * 0.8) - 4, 2, "Back");
+    wrefresh(public_chat_window);
+
+    int ch;
+    // while its in the chat list window
+    while (true) {
+        MEVENT event;
+        ch = wgetch(public_chat_window);
+        if (ch == KEY_MOUSE) {
+            if (getmouse(&event) == OK) {
+                if (event.bstate & BUTTON1_CLICKED) {
+                    // if back button is pressed
+                    if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == (LINES * 0.8) - 3) {
+                        // Back button clicked
+                        clear();
+                        draw_menu_window();
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+void draw_user_list_window()
+{
+    // draw user list window
+    user_list_window_box = subwin(main_window, (LINES * 0.8), 25, 0, COLS - 25);
+    box(user_list_window_box, 0, 0);
+    wrefresh(user_list_window_box);
+    user_list_window = subwin(user_list_window_box, (LINES * 0.8) - 2, 23, 1, COLS - 24);
+
+    keypad(user_list_window, TRUE);
+    mousemask(ALL_MOUSE_EVENTS, NULL);
+
+    // draw user list items
+    // TODO: get users from server and draw them here
+    for(int i = 0; i < 10; i++) {
+        mvwprintw(user_list_window, i * 2, 2, "User %d", i);
+    }
+    wrefresh(user_list_window);
+
+    // draw back button at the bottom of the window
+    mvwprintw(user_list_window, (LINES * 0.8) - 4, 2, "Back");
+    wrefresh(user_list_window);
+
+    // handle input for user list items
+    int ch;
+    // while its in the user list window
+    while (true) {
+        MEVENT event;
+        ch = wgetch(user_list_window);
+        if (ch == KEY_MOUSE) {
+            if (getmouse(&event) == OK) {
+                if (event.bstate & BUTTON1_CLICKED) {
+                    if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == (LINES * 0.8) - 3) {
+                        // Back button clicked
+                        clear();
+                        draw_menu_window();
+                    }
+                }
+            }
+        }
+    }
+}
+
+void draw_create_chat_window()
+{
+    // Create window for chat box, draw said box
+    create_chat_window_box = subwin(main_window, (LINES * 0.8), 25, 0, COLS - 25);
+    box(create_chat_window_box, 0, 0);
+    wrefresh(create_chat_window_box);
+    create_chat_window = subwin(create_chat_window_box, (LINES * 0.8) - 2, 23, 1, COLS - 24);
+    keypad(create_chat_window, TRUE);
+
+    // draw input fields
+    mvwprintw(create_chat_window, 1, 2, "Name of channel:");
+
+    mvwprintw(create_chat_window, 4, 2, "Private (y/n):");
+
+
+    // draw save and back buttons
+    mvwprintw(create_chat_window, 7, 4, "[Save]");
+    mvwprintw(create_chat_window, (LINES * 0.8) - 4, 2, "Back");
+    wrefresh(create_chat_window);
+
+
+
+    bool done = false;
+    while (!done) {
+        MEVENT event;
+        int ch = wgetch(create_chat_window);
+        if (ch == KEY_MOUSE) {
+            if (getmouse(&event) == OK) {
+                if (event.bstate & BUTTON1_CLICKED) {
+                    if (event.y == 7 && event.x >= 4 && event.x <= 9) {
+                        // Save button clicked
+                        // TODO: send channel name and private status to server
+                        // TODO: clear and open chat window for the new channel
+                        clear();
+                        draw_menu_window();
+                        done = true;
+                    } else if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == (LINES * 0.8) - 3) {
+                        // Back button clicked
+                        clear();
+                        draw_menu_window();
+                        done = true;
+                    }
+                }
+            }
+        } else if (ch == '\n') {
+            wmove(create_chat_window, 2, 2);
+            wrefresh(create_chat_window);
+            char channel_name[20];
+            wgetnstr(create_chat_window, channel_name, 20);
+
+            wmove(create_chat_window, 5, 2);
+            wrefresh(create_chat_window);
+            char is_private[2];
+            wgetnstr(create_chat_window, is_private, 2);
+        }
+    }
+}
+
+void draw_user_settings_window()
+{
+    // Create window for chat box, draw said box
+    user_settings_window_box = subwin(main_window, (LINES * 0.8), 25, 0, COLS - 25);
+    box(user_settings_window_box, 0, 0);
+    wrefresh(user_settings_window_box);
+    user_settings_window = subwin(user_settings_window_box, (LINES * 0.8) - 2, 23, 1, COLS - 24);
+    keypad(user_settings_window, TRUE);
+
+    // draw input fields
+    mvwprintw(user_settings_window, 1, 2, "Name:");
+    mvwprintw(user_settings_window, 8, 2, "Password:");
+
+    // draw save and back buttons
+    mvwprintw(user_settings_window, 4, 4, "[Save]");
+    mvwprintw(user_settings_window, 11, 4, "[Save]");
+    mvwprintw(user_settings_window, (LINES * 0.8) - 4, 2, "Back");
+    wrefresh(user_settings_window);
+
+    bool done = false;
+    while (!done)
+    {
+        MEVENT event;
+        int ch = wgetch(user_settings_window);
+        if (ch == KEY_MOUSE)
+        {
+            if (getmouse(&event) == OK)
+            {
+                if (event.bstate & BUTTON1_CLICKED)
+                {
+                    if (event.y == 7 && event.x >= 4 && event.x <= 9)
+                    {
+                        // Save button clicked
+                        clear();
+                        draw_menu_window();
+                        done = true;
+                    } else if (event.x >= COLS - 24 && event.x <= COLS - 2 && event.y == (LINES * 0.8) - 3)
+                    {
+                        // Back button clicked
+                        clear();
+                        draw_menu_window();
+                        done = true;
+                    }
+                }
+            }
+        } else if (ch == '\n')
+        {
+            wmove(user_settings_window, 2, 2);
+            wrefresh(user_settings_window);
+            char name[20];
+            wgetnstr(user_settings_window, name, 20);
+
+            wmove(user_settings_window, 9, 2);
+            wrefresh(user_settings_window);
+            char password[20];
+            wgetnstr(user_settings_window, password, 20);
+        }
+    }
 }
 
 int handle_input()
@@ -333,6 +575,10 @@ int main()
     draw_main_window();
     while(1)
     {
+        wrefresh(main_window);
+        wcursyncup(main_window);
+        wrefresh(input_window);
+        wcursyncup(input_window);
         handle_input();
     }
 }

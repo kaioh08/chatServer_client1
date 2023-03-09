@@ -1,9 +1,10 @@
 //
-// Created by Vasily Shorin on 2023-03-08.
+// Created by Vasily Shorin on 2023-03-07.
 //
 
-#ifndef PROCESS_SERVER_NEW_NCURSES_H
-#define PROCESS_SERVER_NEW_NCURSES_H
+#ifndef NCRUSES_MAIN_H
+#define NCRUSES_MAIN_H
+
 #include <ncurses.h>
 #include <time.h>
 
@@ -32,7 +33,7 @@ void draw_main_window();
 
 /**
  * Prints the given message with a timestamp to the specific chat window.
- * Shows message in the following forwat: [HH:MM:SS] Sender: message
+ * Shows message in the following format: [HH:MM:SS] Sender: message
  *
  * @param chat_window The window to print the message to.
  * @param time_t The time to print.
@@ -44,12 +45,12 @@ void print_message(WINDOW *chat_window, time_t time, char *sender, size_t messag
 
 /**
  * Prints the error message to the specific chat window.
- * Shows message in the following forwat: [HH:MM:SS] Error: message
+ * Shows message in the following format: [HH:MM:SS] Error: message
  *
  * @param chat_window The window to print the message to.
  * @param time_t The time to print.
  * @param message_length The length of the message.
- * @param message The error messageto print.
+ * @param message The error message to print.
  */
 void print_error(WINDOW *chat_window, time_t time, size_t message_length, char *message);
 
@@ -95,4 +96,36 @@ void draw_register_window();
 void draw_menu_window();
 
 
-#endif //PROCESS_SERVER_NEW_NCURSES_H
+/**
+ * Format the given time to the following format: [HH:MM:SS]
+ */
+void formatTime(time_t time, char *time_str);
+
+/**
+ * Draws the chat list window. Sends a request to the server for the list of chats.
+ * The chat list window is a subwindow of the menu window.
+ */
+void draw_public_chat_window();
+
+/**
+ * Draws the user list window. Sends a request to the server for the list of users online.
+ * The user list window is a subwindow of the menu window.
+ * Is drawn on top menu window. Has a back button to go back to the menu window.
+ */
+void draw_user_list_window();
+
+/**
+ * Creates chat window. Sends a request to the server to create a chat.
+ * The chat window is a subwindow of the menu window.
+ * Is drawn on top menu window. Has a back button to go back to the menu window.
+ */
+void draw_create_chat_window();
+
+/**
+ * Draws user setting window. This window is used to change the user's settings.
+ * This includes changing the user's name, password. Has save button under each input field.
+ * Has a back button at the bottom of the window.
+ */
+void draw_user_settings_window();
+
+#endif //NCRUSES_MAIN_H
