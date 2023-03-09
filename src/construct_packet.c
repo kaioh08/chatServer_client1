@@ -8,6 +8,7 @@
 #include <dc_env/env.h>
 #include <dc_c/dc_stdlib.h>
 #include <dc_posix/dc_string.h>
+#include <construct_packet.h>
 
 #define CURRENT_VERSION 1
 
@@ -21,47 +22,13 @@
 #define TYPE_SHIFT 24
 #define OBJECT_SHIFT 16
 
-#define RESPONSE_SIZE 1024
-
 #define DELIMITER "\3"
 
-enum types {
-    TYPE_CREATE = 1,
-    TYPE_READ,
-    TYPE_UPDATE,
-    TYPE_DESTROY
-};
-
-enum objects {
-    OBJECT_USER = 1,
-    OBJECT_CHANNEL,
-    OBJECT_MESSAGE,
-    OBJECT_AUTH
-};
-
-struct base_packet {
-    uint8_t version;
-    uint8_t type;
-    uint8_t object;
-    uint16_t size;
-    uint8_t *body;
-};
-
-void create_user_dispatch(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password);
-void create_channel_dispatch(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *channel_name, char *user_display_name, bool is_public);
-size_t serialize_packet(const struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet);
-void deserialize_packet(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, uint8_t *received_packet, ssize_t rbytes);
-int send_packet(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, char* server_ip, int server_port);
-ssize_t write_fully(int fd, const void *buffer, size_t len);
-ssize_t read_fully(int fd, void *buffer, size_t len);
-
-
-void create_user_dispatch(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *login_token, char *display_name, char *password)
+void create_user_dispatch(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, const char *login_token, const char *display_name, const char *password)
 {
     size_t size_of_body;
-    char *body;
 
-    packet = dc_malloc(env, err, sizeof(struct base_packet));
+//    packet = dc_malloc(env, err, sizeof(struct base_packet));
     if(dc_error_has_error(err))
     {
         fprintf(stderr, "ERROR: %s \n", dc_error_get_message(err)); //NOLINT(cert-err33-c)
@@ -76,13 +43,12 @@ void create_user_dispatch(const struct dc_env *env, struct dc_error *err, struct
     size_of_body += strlen(password)+1;
     packet->size = size_of_body;
 
-    //copy each field to the body
-    body = dc_malloc(env, err, size_of_body*sizeof(char));
+    char *body = dc_malloc(env, err, size_of_body+1);
     if(dc_error_has_error(err))
     {
         fprintf(stderr, "ERROR: %s \n", dc_error_get_message(err)); //NOLINT(cert-err33-c)
     }
-    strcat(body, login_token);
+    strcpy(body, login_token);
     strcat(body, DELIMITER);
     strcat(body, display_name);
     strcat(body, DELIMITER);
@@ -95,7 +61,7 @@ void create_user_dispatch(const struct dc_env *env, struct dc_error *err, struct
     free(body);
 }
 
-void create_channel_dispatch(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, char *channel_name, char *user_display_name, bool is_public)
+void create_channel_dispatch(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, const char *channel_name, const char *user_display_name, const bool is_public)
 {
     size_t size_of_body;
     char *body;
@@ -115,12 +81,12 @@ void create_channel_dispatch(const struct dc_env *env, struct dc_error *err, str
     packet->size = size_of_body;
 
     //copy each field to the body
-    body = dc_malloc(env, err, size_of_body*sizeof(char));
+    body = dc_malloc(env, err, size_of_body+1);
     if(dc_error_has_error(err))
     {
         fprintf(stderr, "ERROR: %s \n", dc_error_get_message(err)); //NOLINT(cert-err33-c)
     }
-    strcat(body, channel_name);
+    strcpy(body, channel_name);
     strcat(body, DELIMITER);
     strcat(body, user_display_name);
     strcat(body, DELIMITER);
@@ -140,19 +106,18 @@ void create_channel_dispatch(const struct dc_env *env, struct dc_error *err, str
     free(body);
 }
 
-size_t serialize_packet(const struct dc_env *env, struct dc_error *err, const struct base_packet *packet, uint8_t *serialized_packet)
+uint8_t *serialize_packet(const struct dc_env *env, struct dc_error *err, const struct base_packet *packet, size_t *packet_size)
 {
-    size_t packet_size;
     size_t current_pos;
     uint16_t temp;
 
-    packet_size = BASE_HEADER_BYTES;
-    packet_size += packet->size;
+    *packet_size = BASE_HEADER_BYTES;
+    *packet_size += packet->size;
     temp = htons(packet->size);
 
     current_pos = 0;
 
-    dc_realloc(env, err, serialized_packet, packet_size);
+    char *serialized_packet = dc_malloc(env, err, *packet_size);
     if(dc_error_has_error(err))
     {
         return 0;
@@ -162,21 +127,27 @@ size_t serialize_packet(const struct dc_env *env, struct dc_error *err, const st
             packet->type << TYPE_SHIFT |
             packet->object << OBJECT_SHIFT |
             temp;
-    memcpy(&serialized_packet[current_pos], &header, BASE_HEADER_BYTES);
-    current_pos += BASE_HEADER_BYTES;
 
-    memcpy(&serialized_packet[current_pos], &packet->body, packet->size);
+    //TODO: fix this, for whatever reason after line 132, serialized_packet is still empty, and then an error occurs at line 134
+    memcpy(serialized_packet, &header, sizeof(uint32_t));
+    current_pos += sizeof(uint32_t);
+    memcpy(serialized_packet+current_pos, &packet->body, packet->size);
 
-    return packet_size;
+    return (uint8_t *) serialized_packet;
 }
 
-void deserialize_packet(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, uint8_t *received_packet, ssize_t rbytes)
+void deserialize_header(const struct dc_env *env, struct dc_error *err, struct base_packet *packet, uint8_t *received_packet)
 {
-    size_t current_pos = 0;
-    packet = dc_malloc(env, err, rbytes);
+    packet = dc_malloc(env, err, sizeof(struct base_packet));
     uint16_t size_size;
     uint32_t header;
 
+    memcpy(&header, &received_packet, BASE_HEADER_BYTES);
+    packet->version = header >> VERSION_SHIFT;
+    packet->type = header >> TYPE_SHIFT;
+    packet->object = header >> OBJECT_SHIFT;
+    size_size = header & 0xFFFF;
+    packet->size = ntohs(size_size);
 }
 
 // send packet over TCP connection
@@ -186,7 +157,7 @@ int send_packet(const struct dc_env *env, struct dc_error *err, struct base_pack
     size_t packet_size;
     ssize_t wbytes;
     ssize_t rbytes;
-    struct base_packet *deserialized_packet;
+    struct base_packet *deserialized_packet = NULL;
 
     int sock = socket(AF_INET, SOCK_STREAM, 0); // Create TCP socket
     if (sock == -1) {
@@ -199,14 +170,16 @@ int send_packet(const struct dc_env *env, struct dc_error *err, struct base_pack
     server.sin_family = AF_INET;
     server.sin_port = htons(server_port);
 
+
+    received_packet = NULL;
+    serialized_packet = serialize_packet(env, err, packet, &packet_size);
+
     if (connect(sock, (struct sockaddr*) &server, sizeof(server)) < 0) { // Connect to server
         perror("Error: connection failed");
         return -1;
     }
 
-    serialized_packet = NULL;
-    received_packet = NULL;
-    packet_size = serialize_packet(env, err, packet, serialized_packet);
+    printf("Connected to server\n");
 
     wbytes = write_fully(sock, serialized_packet, packet_size);
     if((size_t) wbytes != packet_size)
@@ -214,8 +187,25 @@ int send_packet(const struct dc_env *env, struct dc_error *err, struct base_pack
         perror("wbytes != packet_size\n");
     }
 
-    //TODO: read into a 32bit integer, do the shifts, read the next however many bytes specified by size
+    rbytes = read(sock, received_packet, BASE_HEADER_BYTES);
+    if(rbytes != BASE_HEADER_BYTES)
+    {
+        perror("rbytes != header bytes\n");
+    }
+    deserialize_header(env, err, deserialized_packet, received_packet);
+    if(deserialized_packet == NULL)
+    {
+        perror("deserialized_packet still NULL\n");
+    }
 
+    rbytes = read(sock, received_packet, deserialized_packet->size);
+    if(rbytes != deserialized_packet->size)
+    {
+        perror("rbytes != header bytes\n");
+    }
+    deserialized_packet->body = (uint8_t*) dc_strdup(env, err, (char *) received_packet);
+
+    free(received_packet);
     close(sock);
     return 0;
 }

@@ -12,9 +12,10 @@ set(SANITIZE TRUE)
 set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 
-set(SOURCE_LIST ${SOURCE_DIR}/main-client.c
+set(SOURCE_LIST ${SOURCE_DIR}/main.c
                 ${SOURCE_DIR}/construct_packet.c)
-set(HEADER_LIST ${INCLUDE_DIR}/processor.h)
+set(HEADER_LIST ${INCLUDE_DIR}/processor.h
+        ${INCLUDE_DIR}/construct_packet.h)
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
 add_compile_definitions(_XOPEN_SOURCE=700)
