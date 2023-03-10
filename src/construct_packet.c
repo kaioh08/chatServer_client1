@@ -117,7 +117,7 @@ uint8_t *serialize_packet(const struct dc_env *env, struct dc_error *err, const 
 
     current_pos = 0;
 
-    char *serialized_packet = dc_malloc(env, err, *packet_size);
+    uint8_t *serialized_packet = dc_malloc(env, err, *packet_size);
     if(dc_error_has_error(err))
     {
         return 0;
@@ -129,9 +129,9 @@ uint8_t *serialize_packet(const struct dc_env *env, struct dc_error *err, const 
             temp;
 
     //TODO: fix this, for whatever reason after line 132, serialized_packet is still empty, and then an error occurs at line 134
-    memcpy(serialized_packet, &header, sizeof(uint32_t));
-    current_pos += sizeof(uint32_t);
-    memcpy(serialized_packet+current_pos, packet->body, packet->size);
+    memcpy(&serialized_packet[current_pos], &header, BASE_HEADER_BYTES);
+    current_pos += BASE_HEADER_BYTES;
+    memcpy(&serialized_packet[current_pos], packet->body, packet->size);
 
     return (uint8_t *) serialized_packet;
 }
