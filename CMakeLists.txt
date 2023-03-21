@@ -15,6 +15,7 @@ endif()
 set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 set(TESTS_DIR ${PROJECT_SOURCE_DIR}/tests)
+set(NCURSES_DIR ${PROJECT_SOURCE_DIR}/ncurses)
 
 set(PROCESS_SERVER_SOURCE_LIST
         )
@@ -63,6 +64,10 @@ set(TEST_REQUIRED_LIBRARIES_LIST
         )
 set(ECHO_SOURCE_LIST
         ${SOURCE_DIR}/construct_packet.c
+        )
+
+set(NCURSES_SOURCE_LIST
+        ${NCURSES_DIR}/ncurses.c
         )
 
 list(APPEND TEST_REQUIRED_LIBRARIES_LIST
