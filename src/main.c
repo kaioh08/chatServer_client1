@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
             }
 
-            struct binary_header_field * binaryHeaderField = deserialize_header(header);
+            struct binary_header * binaryHeaderField = deserialize_header(header);
 
             // print deserialized header
             fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
