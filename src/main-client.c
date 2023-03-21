@@ -20,20 +20,9 @@
 #define DEFAULT_SIZE 1024
 #define DEFAULT_VERSION 0x1
 
-struct binary_header_field {
-    unsigned int version : 4; // 4 bit version number
-    unsigned int type : 4; // 4 bit type number
-    uint8_t object; // 8 bit object type
-    uint16_t body_size; // 16 bit body size
-};
-
 
 ssize_t write_fully(int fd, const void *buffer, size_t len);
 ssize_t read_fully(int fd, void *buffer, size_t len);
-void display_header(struct binary_header_field * header, const char * data);
-struct binary_header_field * deserialize_header(uint32_t value);
-void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
-                      const char * body);
 
 ssize_t write_fully(int fd, const void *buffer, size_t len)
 {
@@ -278,7 +267,7 @@ void send_delete_message(struct dc_env *env, struct dc_error *err, int fd, const
     serialize_header(env, err, &header, fd, body);
 }
 
-//Send log out(delete auth)  user request
+//Send log out(delete auth) user request
 void send_delete_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 

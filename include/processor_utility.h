@@ -29,9 +29,8 @@ struct binary_header_field {
     uint8_t object; // 8 bit for object type
     uint16_t body_size; // 16 bit for body size
 };
-
-void display_header(struct binary_header_field * header, const char * data);
 struct binary_header_field * deserialize_header(uint32_t value);
+void display_header(struct binary_header_field * header, const char * data);
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd, const char * body);
 void send_create_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_create_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
