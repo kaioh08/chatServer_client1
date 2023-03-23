@@ -23,9 +23,12 @@ enum Object {
     AUTH = 0x04
 };
 
+//changed it to uint32_t to see if the network order is correct
 struct binary_header {
-    unsigned int version : 4; // 4 bit for version number
-    unsigned int type : 4; // 4 bit for type number
+//    unsigned int version : 4; // 4 bit for version number
+//    unsigned int type : 4; // 4 bit for type number
+    uint32_t version : 4; // 4 bit for version number
+    uint32_t type : 4; // 4 bit for type number
     uint8_t object; // 8 bit for object type
     uint16_t body_size; // 16 bit for body size
 };

@@ -45,6 +45,8 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
 
     // Create the packet
     uint32_t packet = ((header->version & 0xF) << 28) | ((header->type & 0xF) << 24) | ((header->object & 0xFF) << 16) | (header->body_size & 0xFFFF);  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+
+    // packet = ntohl(packet);
     // Copy the packet into buffer
     dc_memcpy(env, data, &packet, sizeof(uint32_t));
 
