@@ -43,6 +43,7 @@ set(CLIENT_SOURCE_MAIN
 set(CLIENT_HEADER_LIST
         )
 set(CLIENT_REQUIRED_LIBRARIES_LIST
+        Curses
         dc_error
         dc_env
         dc_c
@@ -379,6 +380,20 @@ function(add_library_target target_name library_type source_files header_files l
     if(NOT "${install_name}" STREQUAL "")
         set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${install_name})
         install(TARGETS ${target_name} DESTINATION bin)
+    endif ()
+endfunction()
+
+function(link_ncurses_libraries target_name)
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        find_library(LIBMENU menu REQUIRED NO_DEFAULT_PATH PATHS /usr/local/opt/ncurses/lib)
+        find_library(LIBNCURSES ncurses REQUIRED NO_DEFAULT_PATH PATHS /usr/local/opt/ncurses/lib)
+        target_link_libraries(${target_name} PUBLIC /usr/local/opt/ncurses/lib/libmenu.dylib)
+        target_link_libraries(${target_name} PUBLIC /usr/local/opt/ncurses/lib/libncurses.dylib)
+    else ()
+        find_library(LIBMENU menu REQUIRED)
+        find_library(LIBNCURSES ncurses REQUIRED)
+        target_link_libraries(${target_name} PUBLIC ${LIBMENU})
+        target_link_libraries(${target_name} PUBLIC ${LIBNCURSES})
     endif ()
 endfunction()
 

@@ -41,12 +41,13 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
 {
     char data[DEFAULT_SIZE];
 
-    header->body_size = htons(header->body_size); // Convert to network byte order.
+//    header->body_size = htonl(header->body_size); // Convert to network byte order.
 
     // Create the packet
     uint32_t packet = ((header->version & 0xF) << 28) | ((header->type & 0xF) << 24) | ((header->object & 0xFF) << 16) | (header->body_size & 0xFFFF);  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
-    // packet = ntohl(packet);
+    packet = htonl(packet); // Convert to network byte order.
+//     packet = ntohl(packet);
     // Copy the packet into buffer
     dc_memcpy(env, data, &packet, sizeof(uint32_t));
 
