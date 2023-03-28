@@ -14,7 +14,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#define SERVER_PORT 5050
+#define SERVER_PORT 6969
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
@@ -212,7 +212,7 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
 void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
     int x, y, username_x, username_y, password_x, password_y, displayname_x, displayname_y, username_len, password_len, displayname_len;
-    char username[20], password[20], displayname[20];
+    char username[20], displayname[20], password[20];
     char ETX[3] = "\x03";
     char *buffer = malloc(sizeof(char) * MAX_SIZE);
     memset(buffer, 0, sizeof(char) * MAX_SIZE);
@@ -235,10 +235,10 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
     mvprintw(username_y, username_x, "Username: ");
 
 
+    mvprintw(displayname_y, displayname_x, "Display Name: ");
+
     mvprintw(password_y, password_x, "Password: ");
 
-
-    mvprintw(displayname_y, displayname_x, "Display Name: ");
 
 
 
@@ -273,10 +273,11 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
 
     strcat(buffer, username);
     strcat(buffer, ETX);
-    strcat(buffer, password);
-    strcat(buffer, ETX);
     strcat(buffer, displayname);
     strcat(buffer, ETX);
+    strcat(buffer, password);
+    strcat(buffer, ETX);
+
     buffer[strlen(buffer)] = '\0';
 
 
@@ -458,7 +459,6 @@ int main(int argc, char *argv[])
         {
             ssize_t n1 = send(socket_fd, buffer, dc_strlen(env, buffer), 0);
 
-//            send_create_user(env, err, socket_fd, body);
 
             printf("Body: %s\n", body);
             if (n1 < 0)
