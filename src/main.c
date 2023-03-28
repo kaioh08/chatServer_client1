@@ -1,5 +1,6 @@
 #include "../include/processor_utility.h"
 #include <arpa/inet.h>
+//#include "../include/gui.h"
 #include <dc_c/dc_stdio.h>
 #include <dc_c/dc_stdlib.h>
 #include <dc_c/dc_string.h>
@@ -13,18 +14,38 @@
 #include <string.h>
 #include <ctype.h>
 
-#define SERVER_PORT 5001
+#define SERVER_PORT 5050
 #define MAX_SIZE 1024
-WINDOW *login_win;
+#define INPUT_HEIGHT 3
+#define MENU_WIDTH 30
+#define MENU_ITEMS 5
+#define MAX_SIZE 1024
+#define LOGIN_WIDTH 50
+#define LOGIN_HEIGHT 30
 
-void quit();
+#define REGISTER_WIDTH 40
+#define REGISTER_HEIGHT 15
+
+bool menu_focused = false;
+int menu_highlight = 0;
+bool menu_active = true;
+
+pthread_mutex_t mutex;
+WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
+
+//void init_windows();
+void init_menu();
+void init_chat();
+void init_input();
+void* input_handler(void* arg);
+void* message_handler(void* arg);
+void draw_menu(int highlight);
+void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd);
 void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd);
+void display_settings();
+void quit();
 
-void quit()
-{
-    endwin();
-    exit(0);
-}
+long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd);
 
 void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
@@ -47,16 +68,35 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
 
     mvprintw(login_y - 2, x / 2 - 10, "Please enter your credentials:");
     mvprintw(login_y, login_x, "Login: ");
+    mvprintw(password_y, password_x, "Password: ");
+
+    mvprintw(password_y + 2, x / 2 - 10, "  Login  ");
+    mvprintw(password_y + 2, x / 2, "  Register  ");
+
     echo();
     move(login_y, login_x + login_len);
     refresh();
     getstr(username);
 
-    mvprintw(password_y, password_x, "Password: ");
+
     move(password_y, password_x + password_len);
     refresh();
     echo();
     getstr(password);
+
+
+
+    if(strlen(username) > 20)
+    {
+        mvprintw(password_y + 6, x / 2 - 15, "Error: username too long");
+        quit();
+    }
+    if(strlen(password) < 6)
+    {
+        sleep(3);
+        mvprintw(password_y + 6, x / 2 - 15, "Error: password too short");
+//        quit();
+    }
 
     strcat(buffer, username);
     strcat(buffer, ETX);
@@ -65,17 +105,17 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
     buffer[strlen(buffer)] = '\0';
 
 
-    mvprintw(password_y + 2, x / 2 - 10, "  Login  ");
-    mvprintw(password_y + 2, x / 2, "  Register  ");
 
     // highlight login button
     attron(A_REVERSE);
     mvprintw(password_y + 2, x / 2 - 10, "  Login  ");
     attroff(A_REVERSE);
 
+    //TODO: let user choose between login and register before entering credentials
+
     int focus = 0;
     bool done = false;
-
+    int response;
     while (!done)
     {
         refresh();
@@ -93,6 +133,12 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                     attroff(A_REVERSE);
                     // unhighlight login button
                     mvprintw(password_y + 2, x / 2 - 10, "  Login  ");
+                    int newCh = getch();
+                    if(newCh =='\n')
+                    {
+                        draw_register_window(env, err, socket_fd);
+                        done = true;
+                    }
                 }
                 break;
             case KEY_UP:
@@ -105,16 +151,43 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                     attroff(A_REVERSE);
                     // unhighlight register button
                     mvprintw(password_y + 2, x / 2, "  Register  ");
+                    int newCh = getch();
+                    // if login button is pressed, call login function
+                    if(newCh =='\n')
+                    {
+//                        send_create_auth(env, err, socket_fd, buffer);
+                        done = true;
+                    }
                 }
                 break;
             case '\n':
                 if (strlen(buffer) < MAX_SIZE)
                 {
+//                    init_windows();
                     send_create_auth(env, err, socket_fd, buffer);
-                    done = true;
+                    long response = get_response_code(env, err, socket_fd);
+
+                    if (response != 201)
+                    {
+                        mvprintw(y - 2, x / 2 - 15, "Error: invalid credentials");
+                        wrefresh(login_win);
+                        sleep(3);
+                        draw_login_win(env, err, socket_fd);
+                        done = true;
+                    } else {
+                        mvprintw(y - 2, x / 2 - 15, "Success: logged in");
+                        wrefresh(login_win);
+//                        init_windows();
+//                        init_menu();
+//                        init_chat();
+//                        init_input();
+                        done = true;
+                    }
+//                    draw_register_window(env, err, socket_fd);
+//                    done = true;
                 } else
                 {
-                // handle buffer overflow
+                    // handle buffer overflow
                     mvprintw(y - 2, x / 2 - 15, "Error: buffer overflow");
                 }
                 break;
@@ -130,11 +203,180 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
     }
 
     free(buffer);
-
+    noecho();
     refresh();
     delwin(login_win);
 }
-            int main(int argc, char *argv[])
+
+
+void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd)
+{
+    int x, y, username_x, username_y, password_x, password_y, displayname_x, displayname_y, username_len, password_len, displayname_len;
+    char username[20], password[20], displayname[20];
+    char ETX[3] = "\x03";
+    char *buffer = malloc(sizeof(char) * MAX_SIZE);
+    memset(buffer, 0, sizeof(char) * MAX_SIZE);
+    register_win = newwin(12, 40, (LINES - 12) / 2, (COLS - 40) / 2);
+    clear();
+
+    getmaxyx(stdscr, y, x);
+
+    username_len = strlen("Username: ");
+    username_x = x / 2 - username_len;
+    username_y = y / 2 - 1;
+    password_len = strlen("Password: ");
+    password_x = x / 2 - password_len;
+    password_y = username_y + 2;
+    displayname_len = strlen("Display Name: ");
+    displayname_x = x / 2 - displayname_len;
+    displayname_y = password_y + 2;
+
+    mvprintw(username_y - 2, x / 2 - 10, "Please enter your registration details:");
+    mvprintw(username_y, username_x, "Username: ");
+
+
+    mvprintw(password_y, password_x, "Password: ");
+
+
+    mvprintw(displayname_y, displayname_x, "Display Name: ");
+
+
+
+    mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
+    mvprintw(displayname_y + 2, x / 2, "  Cancel  ");
+
+    echo();
+    move(username_y, username_x + username_len);
+    refresh();
+    getstr(username);
+
+    move(password_y, password_x + password_len);
+    refresh();
+    echo();
+    getstr(password);
+
+    move(displayname_y, displayname_x + displayname_len);
+    refresh();
+    echo();
+    getstr(displayname);
+
+    if(strlen(username) > 20)
+    {
+        mvprintw(displayname_y + 6, x / 2 - 15, "Error: username too long");
+        quit();
+    }
+    if(strlen(password) < 6)
+    {
+        mvprintw(displayname_y + 6, x / 2 - 15, "Error: password too short");
+//        quit();
+    }
+
+    strcat(buffer, username);
+    strcat(buffer, ETX);
+    strcat(buffer, password);
+    strcat(buffer, ETX);
+    strcat(buffer, displayname);
+    strcat(buffer, ETX);
+    buffer[strlen(buffer)] = '\0';
+
+
+    // highlight register button
+    attron(A_REVERSE);
+    mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
+    attroff(A_REVERSE);
+
+    int focus = 0;
+    bool done = false;
+
+
+    while (!done)
+    {
+        refresh();
+        int ch = getch();
+
+        switch (ch)
+        {
+            case KEY_DOWN:
+                if (focus == 0)
+                {
+                    focus = 1;
+                    // highlight cancel button
+                    attron(A_REVERSE);
+                    mvprintw(displayname_y + 2, x / 2, "  Cancel  ");
+                    attroff(A_REVERSE);
+                    // unhighlight register button
+                    mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
+                }
+                break;
+            case KEY_UP:
+                if (focus == 1)
+                {
+                    focus = 0;
+                    // highlight register
+                    attron(A_REVERSE);
+                    mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
+                    attroff(A_REVERSE);
+                    // unhighlight cancel button
+                    mvprintw(displayname_y + 2, x / 2, "  Cancel  ");
+                    int newCh;
+                    if(newCh == '\n')
+                    {
+                        send_create_user(env, err, socket_fd, buffer);
+                        done = true;
+                    }
+                }
+                break;
+            case '\n':
+                if (strlen(buffer) < MAX_SIZE)
+                {
+//                    init_windows();
+                    send_create_user(env, err, socket_fd, buffer);
+                    long response = get_response_code(env, err, socket_fd);
+                    if(response != 201)
+                    {
+                        mvprintw(displayname_y + 6, x / 2 - 15, "Error: username already exists");
+                        wrefresh(register_win);
+                        sleep(2);
+                        draw_register_window(env, err, socket_fd);
+                        refresh();
+                    }
+                    else
+                    {
+                        mvprintw(displayname_y + 6, x / 2 - 15, "Registration successful");
+                        wrefresh(register_win);
+                        sleep(1);
+                        done = true;
+                        //return to login screen
+                        draw_login_win(env, err, socket_fd);
+                        refresh();
+                        done=true;
+                    }
+//                    done = true;
+                } else
+                {
+                    // handle buffer overflow
+                    mvprintw(y - 2, x / 2 - 15, "Error: buffer overflow");
+                }
+                break;
+            default:
+                // handle other key presses
+                break;
+        }
+        // consume newline character
+        if (ch != KEY_DOWN && ch != KEY_UP)
+        {
+            getch();
+        }
+    }
+
+    free(buffer);
+    noecho();
+    refresh();
+    delwin(register_win);
+}
+
+
+int main(int argc, char *argv[])
 {
     stdscr = initscr();
     cbreak();
@@ -228,30 +470,8 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
             fprintf(stderr, "Written to server\n");
             write(STDOUT_FILENO, buffer, n1);
 
-            uint32_t header;
-            char body[MAX_SIZE];
-            ssize_t n;
+            get_response_code(env, err, socket_fd);
 
-            // receive header from server
-            n = read(socket_fd, &header, sizeof(header));
-            if (n < 0) {
-                perror("error");
-                exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
-            }
-
-            struct binary_header * binaryHeaderField = deserialize_header(header);
-
-            printf("RECEIVED FROM SERVER");
-            // print deserialized header
-            fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
-            fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
-            fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
-            fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
-
-            // Read body and clear buffer
-            read(socket_fd, &body, MAX_SIZE);
-            body[(binaryHeaderField->body_size)] = '\0';
-            fprintf(stderr, "Body: %s\n", body);
         }
         fprintf(stderr, "Client Disconnected.\n");
     }
@@ -261,4 +481,46 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
     close(socket_fd);
 
     return EXIT_SUCCESS;
+}
+
+long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
+{
+    uint32_t header;
+    char body[MAX_SIZE];
+    ssize_t n;
+
+    // receive header from server
+    n = read(socket_fd, &header, sizeof(header));
+    if (n < 0) {
+        perror("error");
+        exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
+    }
+
+    struct binary_header * binaryHeaderField = deserialize_header(header);
+
+    printf("RECEIVED FROM SERVER");
+    // print deserialized header
+    fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
+    fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
+    fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
+    fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
+
+    // Read body and clear buffer
+    read(socket_fd, &body, MAX_SIZE);
+//            body[(binaryHeaderField->body_size)] = '\0';
+    fprintf(stderr, "Body: %s\n", body);
+
+    // parse body until the delimeter "\0x3"
+    long response;
+    char *token = strtok(body, "\0x3");
+    // convert the first token to an int
+    response = dc_strtol(env, err, token, NULL, 10);
+    return response;
+}
+
+
+void quit()
+{
+    endwin();
+    exit(0);
 }
