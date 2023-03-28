@@ -436,19 +436,6 @@ int main(int argc, char *argv[])
         perror("Connect failed");
         run_client = false;
     }
-    char login[6] = "login";
-    char pwd[5] = "pwd";
-    char username[9] = "username";
-    char etx[5] = "0x03";
-
-    char *body = dc_malloc(env, err, 1024);
-
-    dc_strcpy(env, body, login);
-    dc_strcat(env, body, etx);
-    dc_strcat(env, body, pwd);
-    dc_strcat(env, body, etx);
-    dc_strcat(env, body, username);
-    dc_strcat(env, body, etx);
 
     if (run_client) {
         fprintf(stderr, "Connected to server.\n");
@@ -459,8 +446,6 @@ int main(int argc, char *argv[])
         {
             ssize_t n1 = send(socket_fd, buffer, dc_strlen(env, buffer), 0);
 
-
-            printf("Body: %s\n", body);
             if (n1 < 0)
             {
                 perror("send");
