@@ -138,7 +138,7 @@ void send_create_message(struct dc_env *env, struct dc_error *err, int fd, const
     header.object = MESSAGE;
     header.body_size = strlen( body);
     // Display and send the header
-    display_header(&header, body);
+//    display_header(&header, body);
     serialize_header(env, err, &header, fd, body);
 }
 

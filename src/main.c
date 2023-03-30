@@ -16,7 +16,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#define SERVER_PORT 4981
+#define SERVER_PORT 8888
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
@@ -166,7 +166,7 @@ void create_new_chat() {
                         char request_body[256] = {0};
                         wprintw(create_chat_win, "Chat name: %s, publicity: %c", chat_name, publicity);
                         wrefresh(create_chat_win);
-                        sleep(4);
+                        sleep(1);
                         // You can process the data and send it to the server here
                         quit = true;
                     } else if (cur_x >= 28 && cur_x <= 33) {
@@ -773,7 +773,7 @@ void* input_handler(void* arg) {
     bool quit = false;
     int input_idx = 0;
     char input_buffer[COLS - 2];
-    char timestamp[17] = "00000000";
+    char timestamp[17] = "12345678";
     char message[1024];
     char name[20] = "Vasily";
     char channel_name[1024] = "channel";
@@ -839,6 +839,7 @@ void* input_handler(void* arg) {
                     memset(input_buffer, 0, sizeof(input_buffer));
                     mvwprintw(input_win, 1, 1, "Enter message: ");
                     wrefresh(input_win);
+                    refresh();
                     break;
                 case KEY_BACKSPACE:
                 case KEY_DC:
@@ -910,11 +911,6 @@ int main(int argc, char *argv[])
     err1 = dc_error_create(false);
     env1 = dc_env_create(err1, true, NULL);
 
-
-//    arg = malloc(sizeof(struct dc_env*) + sizeof(struct dc_error*) + sizeof(socket_fd));
-//    memcpy((char* )arg, &env, sizeof(struct dc_env*)); // ff ff ff ff
-//    memcpy((char *)arg + sizeof(struct dc_env*), &err, sizeof(struct dc_error*)); // ff ff ff ff
-//    memcpy((char *)arg + sizeof(struct dc_env*) + sizeof(struct dc_error*), &socket_fd, sizeof(socket_fd)); // ff ff
 
     pthread_mutex_init(&mutex, NULL);
     pthread_t input_thread, message_thread;
