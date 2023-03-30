@@ -13,8 +13,9 @@
 #include <ncurses.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
 
-#define SERVER_PORT 6969
+#define SERVER_PORT 8888
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
@@ -33,19 +34,49 @@ bool menu_active = true;
 pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 
-//void init_windows();
-void init_menu();
-void init_chat();
-void init_input();
+void init_windows();
+void init_menu(void);
+void init_chat(void);
+void init_input(void);
 void* input_handler(void* arg);
 void* message_handler(void* arg);
 void draw_menu(int highlight);
 void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd);
+void apply_highlight(WINDOW *win, int y, int x, const char *str);
+void remove_highlight(WINDOW *win, int y, int x, const char *str);
 void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd);
 void display_settings();
 void quit();
 
 long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd);
+
+void draw_menu(int highlight) {
+    const char *choices[] = {
+            "Create new chat",
+            "Show list of active chats",
+            "Show active users",
+            "Settings",
+            "Quit",
+    };
+
+    for (int i = 0; i < MENU_ITEMS; i++) {
+        if (highlight == i) {
+            wattron(menu_win, A_REVERSE);
+        }
+        mvwprintw(menu_win, i + 1, 1, "%s", choices[i]);
+        wattroff(menu_win, A_REVERSE);
+    }
+    wrefresh(menu_win);
+}
+
+void* message_handler(void* arg) {
+    while (true) {
+        // TODO: Implement message sending and receiving
+        usleep(100000); // Sleep to prevent high CPU usage
+    }
+
+    return NULL;
+}
 
 void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
@@ -163,11 +194,10 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
             case '\n':
                 if (strlen(buffer) < MAX_SIZE)
                 {
-//                    init_windows();
                     send_create_auth(env, err, socket_fd, buffer);
                     long response = get_response_code(env, err, socket_fd);
 
-                    if (response != 201)
+                    if (response != 200)
                     {
                         mvprintw(y - 2, x / 2 - 15, "Error: invalid credentials");
                         wrefresh(login_win);
@@ -177,10 +207,7 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                     } else {
                         mvprintw(y - 2, x / 2 - 15, "Success: logged in");
                         wrefresh(login_win);
-//                        init_windows();
-//                        init_menu();
-//                        init_chat();
-//                        init_input();
+                        init_windows();
                         done = true;
                     }
 //                    draw_register_window(env, err, socket_fd);
@@ -208,6 +235,61 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
     delwin(login_win);
 }
 
+void handle_menu_selection(int choice) {
+    switch (choice) {
+        case 0: // Create new chat
+//            create_new_chat();
+            break;
+        case 1: // Show list of active chats
+//            show_active_chats();
+            break;
+        case 2: // Show active users
+//            show_active_users();
+            break;
+        case 3: // Settings
+//            display_settings();
+            break;
+        case 4:
+            quit();
+            break;
+    }
+}
+
+void init_windows() {
+    init_menu();
+    init_chat();
+    init_input();
+    refresh();
+}
+
+void init_menu(void) {
+    menu_win = newwin(LINES - INPUT_HEIGHT, MENU_WIDTH, 0, 0);
+    wbkgd(menu_win, COLOR_PAIR(1));
+    box(menu_win, 0, 0);
+    wrefresh(menu_win);
+    draw_menu(0);
+    refresh();
+}
+
+void init_chat(void) {
+    chat_win = newwin(LINES - INPUT_HEIGHT, COLS - MENU_WIDTH, 0, MENU_WIDTH);
+    scrollok(chat_win, TRUE);
+    box(chat_win, 0, 0);
+    wrefresh(chat_win);
+    refresh();
+}
+
+void init_input(void) {
+    input_win = newwin(INPUT_HEIGHT, COLS, LINES - INPUT_HEIGHT, 0);
+    keypad(input_win, TRUE);
+    scrollok(input_win, TRUE);
+    box(input_win, 0, 0);
+    wrefresh(input_win);
+    mvwprintw(input_win, 1, 1, "Enter message: ");
+    wrefresh(input_win);
+    nodelay(input_win, TRUE);
+    refresh();
+}
 
 void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
@@ -376,6 +458,105 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
     delwin(register_win);
 }
 
+void* input_handler(void* arg) {
+    int ch;
+    bool quit = false;
+    int input_idx = 0;
+    char input_buffer[COLS - 2];
+    memset(input_buffer, 0, sizeof(input_buffer));
+    draw_menu(menu_highlight);
+    while (!quit) {
+        ch = getch();
+
+        pthread_mutex_lock(&mutex);
+
+        if (menu_focused && menu_active) {
+            // clear input window
+            werase(input_win);
+            box(input_win, 0, 0);
+            wrefresh(input_win);
+            switch (ch) {
+                case KEY_UP:
+                    if (menu_highlight > 0) {
+                        menu_highlight--;
+                    }
+                    break;
+                case KEY_DOWN:
+                    if (menu_highlight < MENU_ITEMS - 1) {
+                        menu_highlight++;
+                    }
+                    break;
+                case KEY_ENTER:
+                case '\n':
+                case '\r':
+                    handle_menu_selection(menu_highlight);
+                    break;
+                case '\t': // Press 'Tab' to switch focus between input and menu
+                    menu_focused = !menu_focused;
+                    break;
+                default:
+                    break;
+            }
+
+            draw_menu(menu_highlight);
+        } else {
+            // Enter message
+            mvwprintw(input_win, 1, 1, "Enter message: ");
+            wrefresh(input_win);
+            switch (ch) {
+                case KEY_ENTER:
+                case '\n':
+                case '\r':
+                    // TODO: Handle sending the message
+                    werase(input_win);
+                    box(input_win, 0, 0);
+                    wrefresh(input_win);
+                    input_idx = 0;
+                    memset(input_buffer, 0, sizeof(input_buffer));
+                    mvwprintw(input_win, 1, 1, "Enter message: ");
+                    wrefresh(input_win);
+                    break;
+                case KEY_BACKSPACE:
+                case KEY_DC:
+                case 127: // Backspace key
+                    if (input_idx > 0) {
+                        input_idx--;
+                        input_buffer[input_idx] = '\0';
+                        werase(input_win);
+                        box(input_win, 0, 0);
+                        mvwprintw(input_win, 1, 16, "%s", input_buffer);
+                        wrefresh(input_win);
+                    }
+                    break;
+                case '\t': // Press 'Tab' to switch focus between input and menu
+                    menu_focused = !menu_focused;
+                    break;
+                case KEY_UP:
+                    break;
+                case KEY_DOWN:
+                    break;
+                case KEY_LEFT:
+                    break;
+                case KEY_RIGHT:
+                    break;
+                default:
+                    if (input_idx < COLS - 3) {
+                        input_buffer[input_idx] = ch;
+                        input_idx++;
+                        mvwprintw(input_win, 1, 16, "%s", input_buffer);
+                        wrefresh(input_win);
+                    }
+                    break;
+            }
+        }
+
+        pthread_mutex_unlock(&mutex);
+
+        // Sleep to prevent high CPU usage
+        usleep(10000);
+    }
+    return NULL;
+}
 
 int main(int argc, char *argv[])
 {
@@ -383,6 +564,9 @@ int main(int argc, char *argv[])
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
+    pthread_mutex_init(&mutex, NULL);
+    pthread_t input_thread, message_thread;
+//    pthread_create(&message_thread, NULL, message_handler, NULL);
     curs_set(0);
     start_color();
     init_pair(1, COLOR_WHITE, COLOR_BLUE);
@@ -440,29 +624,17 @@ int main(int argc, char *argv[])
     if (run_client) {
         fprintf(stderr, "Connected to server.\n");
         refresh();
-        draw_login_win(env, err, socket_fd);
-
-        while(fgets(buffer, MAX_SIZE, stdin) != NULL)
-        {
-            ssize_t n1 = send(socket_fd, buffer, dc_strlen(env, buffer), 0);
-
-            if (n1 < 0)
-            {
-                perror("send");
-                return EXIT_FAILURE;
-            }
-
-            fprintf(stderr, "Written to server\n");
-            write(STDOUT_FILENO, buffer, n1);
-
-            get_response_code(env, err, socket_fd);
-
-        }
-        fprintf(stderr, "Client Disconnected.\n");
+//        draw_login_win(env, err, socket_fd);
+        init_windows();
+        pthread_create(&input_thread, NULL, input_handler, NULL);
     }
 
     free(env);
     free(err);
+    pthread_join(input_thread, NULL);
+//    pthread_join(message_thread, NULL);
+
+    pthread_mutex_destroy(&mutex);
     close(socket_fd);
 
     return EXIT_SUCCESS;

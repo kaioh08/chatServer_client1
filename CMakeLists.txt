@@ -325,6 +325,12 @@ function(link_ncurses_libraries target_name)
     endif ()
 endfunction()
 
+function(link_pthread_libraries target_name)
+    find_library(LIBPTHREAD pthread REQUIRED)
+    target_link_libraries(${target_name} PUBLIC ${LIBPTHREAD})
+endfunction()
+
+
 function(link_gtk_libraries target_name)
 endfunction()
 
