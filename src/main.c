@@ -15,6 +15,7 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <form.h>
+#include <sys/time.h>
 
 #define SERVER_PORT 8888
 #define MAX_SIZE 1024
@@ -38,6 +39,7 @@ pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 
 void init_windows(void);
+void generate_timestamp(char* timestamp, size_t len);
 void init_menu(void);
 void init_chat(void);
 void init_input(void);
@@ -281,139 +283,80 @@ void show_active_users()
     menu_focused = true;
 }
 
-//void display_settings() {
-//    WINDOW *settings_win;
-//    int settings_win_width = 50;
-//    int settings_win_height = 10;
-//    int startx = (COLS - settings_win_width) / 2;
-//    int starty = (LINES - settings_win_height) / 2;
-//
-//    settings_win = newwin(settings_win_height, settings_win_width, starty, startx);
-//    box(settings_win, 0, 0);
-//    wrefresh(settings_win);
-//
-//    // Fields
-//    FIELD *field[3];
-//    field[0] = new_field(1, 20, 1, 18, 0, 0); // Name
-//    field[1] = new_field(1, 20, 3, 18, 0, 0); // Password
-//    field[2] = NULL;
-//
-//    set_field_back(field[0], A_UNDERLINE);
-//    set_field_back(field[1], A_UNDERLINE);
-//
-//    FORM *form = new_form(field);
-//    set_form_win(form, settings_win);
-//    set_form_sub(form, derwin(settings_win, settings_win_height - 4, settings_win_width - 4, 2, 2));
-//
-//    post_form(form);
-//    wrefresh(settings_win);
-//
-//    // Labels
-//    mvwprintw(settings_win, 2, 2, "Name:");
-//    mvwprintw(settings_win, 4, 2, "Password:");
-//
-//    // Buttons
-//    mvwprintw(settings_win, 7, 10, "[Save]");
-//    mvwprintw(settings_win, 7, 28, "[Back]");
-//
-//    bool quit = false;
-//    int ch;
-//    int current_field = 0;
-//    bool button_focused = false;
-//    form_driver(form, REQ_FIRST_FIELD);
-//
-//    keypad(settings_win, TRUE); // Enable keypad mode to capture arrow keys
-//
-//    while (!quit) {
-//        ch = wgetch(settings_win);
-//        int cur_y, cur_x;
-//        getyx(settings_win, cur_y, cur_x);
-//
-//        if (!button_focused) {
-//            // Handle arrow keys
-//            switch (ch) {
-//                case KEY_DOWN:
-//                    form_driver(form, REQ_NEXT_FIELD);
-//                    form_driver(form, REQ_END_LINE);
-//                    current_field++;
-//                    break;
-//                case KEY_UP:
-//                    form_driver(form, REQ_PREV_FIELD);
-//                    form_driver(form, REQ_END_LINE);
-//                    current_field--;
-//                    break;
-//                case KEY_LEFT:
-//                    form_driver(form, REQ_PREV_CHAR);
-//                    break;
-//                case KEY_RIGHT:
-//                    form_driver(form, REQ_NEXT_CHAR);
-//                    break;
-//                case 27: // ESC
-//                    quit = true;
-//                    break;
-//                case 10: // Enter
-//                    if (current_field == 2) {
-//                        button_focused = true;
-//                        mvwprintw(settings_win, 7, 10, " Save ");
-//                        mvwprintw(settings_win, 7, 28, " Back ");
-//                        wmove(settings_win, 7, 10);
-//                    }
-//                    break;
-//                default:
-//                    form_driver(form, ch);
-//                    break;
-//            }
-//        } else {
-//            switch (ch) {
-//                case KEY_LEFT:
-//                    if (cur_x == 28) {
-//                        mvwprintw(settings_win, 7, 10, " Save ");
-//                        mvwprintw(settings_win, 7, 28, " Back ");
-//                        wmove(settings_win, 7, 10);
-//                    }
-//                    break;
-//                case KEY_RIGHT:
-//                    if (cur_x == 10) {
-//                        mvwprintw(settings_win, 7, 10, " Save ");
-//                        mvwprintw(settings_win, 7, 28, " Back ");
-//                        wmove(settings_win, 7, 28);
-//                    }
-//                    break;
-//                case 10: // Enter
-//                    if (cur_x == 10) {
-//                        // Save
-//                        quit = true;
-//                    } else if (cur_x == 28) {
-//                        // Back
-//                        quit = true;
-//                    }
-//                    break;
-//                case 27: // ESC
-//                    quit = true;
-//                    break;
-//            }
-//        }
-//
-//        wrefresh(settings_win);
-//    }
-//
-//    // Clean up
-//    unpost_form(form);
-//    free_form(form);
-//    for (int i = 0; i < 2; i++) {
-//        free_field(field[i]);
-//    }
-//
-//    // Close the settings window
-//    delwin(settings_win);
-//    touchwin(menu_win);
-//    wrefresh(menu_win);
-//    touchwin(chat_win);
-//    wrefresh(chat_win);
-//    touchwin(input_win);
-//    wrefresh(input_win);
-//    menu_focused = true;
-//}
+void display_settings() {
+        // create a new window for the display name update form
+        WINDOW *update_win = newwin(10, 60, (LINES - 10) / 2, (COLS - 60) / 2);
+        box(update_win, 0, 0);
+
+        // create input field for the new display name
+        char display_name[MAX_NAME_LENGTH + 1] = {0};
+        mvwprintw(update_win, 2, 2, "New Display Name: ");
+        wmove(update_win, 2, 20);
+        echo();
+        curs_set(1);
+        wgetnstr(update_win, display_name, MAX_NAME_LENGTH);
+        noecho();
+        curs_set(0);
+
+        // create "Save" and "Cancel" buttons
+        mvwprintw(update_win, 4, 20, "[ Save ]");
+        mvwprintw(update_win, 4, 35, "[ Cancel ]");
+
+        // allow user to click on the buttons
+        keypad(update_win, TRUE);
+
+        bool quit = false;
+        int ch;
+        bool save_clicked = false;
+        while (!quit) {
+            ch = wgetch(update_win);
+            switch (ch) {
+                case KEY_LEFT:
+                case KEY_RIGHT:
+                    // toggle focus between buttons
+                    save_clicked = !save_clicked;
+                    break;
+                case 10: // Enter
+                    if (save_clicked && strlen(display_name) > 0) {
+                        // call create_update_user to update the user's display name
+//                        create_update_user(env, err, fd, display_name);
+                        wprintw(chat_win, "Display name updated to %s", display_name);
+                        sleep(2);
+                        quit = true;
+                    } else {
+                        quit = true;
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            // highlight the active button
+            if (save_clicked) {
+                wattron(update_win, A_REVERSE);
+                mvwprintw(update_win, 4, 20, "[ Save ]");
+                wattroff(update_win, A_REVERSE);
+                mvwprintw(update_win, 4, 35, "[ Cancel ]");
+            } else {
+                mvwprintw(update_win, 4, 20, "[ Save ]");
+                wattron(update_win, A_REVERSE);
+                mvwprintw(update_win, 4, 35, "[ Cancel ]");
+                wattroff(update_win, A_REVERSE);
+            }
+
+            wrefresh(update_win);
+        }
+
+        delwin(update_win);
+        touchwin(menu_win);
+        wrefresh(menu_win);
+        touchwin(chat_win);
+        wrefresh(chat_win);
+        touchwin(input_win);
+        wrefresh(input_win);
+        menu_focused = true;
+}
+
 
 void* message_handler(void* arg) {
     while (true) {
@@ -593,7 +536,7 @@ void handle_menu_selection(int choice) {
             show_active_users();
             break;
         case 3: // Settings
-//            display_settings();
+            display_settings();
             break;
         case 4:
             quit();
@@ -809,8 +752,11 @@ void* input_handler(void* arg) {
     bool quit = false;
     int input_idx = 0;
     char input_buffer[COLS - 2];
+    char timestamp[17];
+    char ETX[3] = "\x03";
     memset(input_buffer, 0, sizeof(input_buffer));
     draw_menu(menu_highlight);
+
     while (!quit) {
         ch = getch();
 
@@ -821,6 +767,7 @@ void* input_handler(void* arg) {
             werase(input_win);
             box(input_win, 0, 0);
             wrefresh(input_win);
+
             switch (ch) {
                 case KEY_UP:
                     if (menu_highlight > 0) {
@@ -849,11 +796,21 @@ void* input_handler(void* arg) {
             // Enter message
             mvwprintw(input_win, 1, 1, "Enter message: ");
             wrefresh(input_win);
+
             switch (ch) {
                 case KEY_ENTER:
                 case '\n':
                 case '\r':
-                    // TODO: Handle sending the message
+
+                    generate_timestamp(timestamp, sizeof(timestamp));
+                    char message[1024];
+                    char *name;
+                    char channel_name[1024];
+                    snprintf(message, sizeof(message), "%s%c%s%c%s%c%s%c",
+                             name, ETX, channel_name, ETX,
+                             input_buffer, ETX, timestamp, ETX);
+//                    send_create_message(env, err, socket_fd, message);
+
                     werase(input_win);
                     box(input_win, 0, 0);
                     wrefresh(input_win);
@@ -903,6 +860,20 @@ void* input_handler(void* arg) {
     }
     return NULL;
 }
+
+void generate_timestamp(char* timestamp, size_t len) {
+    static const char* const hex = "0123456789ABCDEF";
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t ms = (tv.tv_sec * 1000LL) + (tv.tv_usec / 1000LL);
+    size_t i = 0;
+    for (; i < len - 1 && ms; i++) {
+        timestamp[i] = hex[ms & 0xF];
+        ms >>= 4;
+    }
+    timestamp[i] = '\0';
+}
+
 
 int main(int argc, char *argv[])
 {
