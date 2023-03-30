@@ -14,11 +14,14 @@
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <form.h>
 
 #define SERVER_PORT 8888
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
+#define MAX_NAME_LENGTH 20
+#define MAX_PASSWORD_LENGTH 20
 #define MENU_ITEMS 5
 #define MAX_SIZE 1024
 #define LOGIN_WIDTH 50
@@ -34,7 +37,7 @@ bool menu_active = true;
 pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 
-void init_windows();
+void init_windows(void);
 void init_menu(void);
 void init_chat(void);
 void init_input(void);
@@ -68,6 +71,349 @@ void draw_menu(int highlight) {
     }
     wrefresh(menu_win);
 }
+
+void apply_highlight(WINDOW *win, int y, int x, const char *str) {
+    wattron(win, A_REVERSE);
+    mvwprintw(win, y, x, str);
+    wattroff(win, A_REVERSE);
+}
+
+void remove_highlight(WINDOW *win, int y, int x, const char *str) {
+    mvwprintw(win, y, x, str);
+}
+
+void create_new_chat() {
+    WINDOW *create_chat_win;
+    bool is_private = false;
+    bool menu_focused = false;
+    char chat_name[MAX_NAME_LENGTH + 1] = {0};
+    char password[MAX_PASSWORD_LENGTH + 1] = {0};
+    int create_chat_win_width = 50;
+    int create_chat_win_height = 12;
+    int startx = (COLS - create_chat_win_width) / 2;
+    int starty = (LINES - create_chat_win_height) / 2;
+
+    create_chat_win = newwin(create_chat_win_height, create_chat_win_width, starty, startx);
+    box(create_chat_win, 0, 0);
+    wrefresh(create_chat_win);
+
+// Labels
+    mvwprintw(create_chat_win, 2, 2, "Chat Name:");
+    mvwprintw(create_chat_win, 4, 2, "Public (y/n): ");
+// Buttons
+    mvwprintw(create_chat_win, 9, 10, "[Save]");
+    mvwprintw(create_chat_win, 9, 28, "[Back]");
+
+    bool quit = false;
+    int ch;
+    int current_field = 0;
+    bool button_focused = false;
+
+    keypad(create_chat_win, TRUE); // Enable keypad mode to capture arrow keys
+    MEVENT event;
+    while (!quit) {
+        ch = wgetch(create_chat_win);
+        // Get the cursor position
+        int cur_y, cur_x;
+        getyx(create_chat_win, cur_y, cur_x);
+        if (!button_focused) {
+            switch (ch) {
+                // if escape is pressed, quit the loop
+                case 27:
+                    quit = true;
+                    break;
+                case KEY_DOWN:
+                    if (current_field < 1) {
+                        current_field++;
+                    }
+                    break;
+                case KEY_UP:
+                    if (current_field > 0) {
+                        current_field--;
+                    }
+                    break;
+                case KEY_LEFT:
+                case KEY_RIGHT:
+                    if (current_field == 1) {
+                        is_private = !is_private;
+                        mvwprintw(create_chat_win, 4, 15, "%c", is_private ? 'y' : 'n');
+                    }
+                    break;
+                case KEY_BACKSPACE:
+                case 127:
+                    if (current_field == 0) {
+                        if (strlen(chat_name) > 0) {
+                            chat_name[strlen(chat_name) - 1] = '\0';
+                        }
+                    }
+                    break;
+                case '\n':
+                case '\r':
+                    if (cur_x >= 10 && cur_x <= 15) {
+                        // Save button
+                        // TODO: Add create server dispatch request
+                        char publicity = is_private ? '0' : '1';
+                        char request_body[256] = {0};
+                        wprintw(create_chat_win, "Chat name: %s, publicity: %c", chat_name, publicity);
+                        wrefresh(create_chat_win);
+                        sleep(4);
+                        // You can process the data and send it to the server here
+                        quit = true;
+                    } else if (cur_x >= 28 && cur_x <= 33) {
+                        // Back button
+                        quit = true;
+                    }
+                    break;
+                default:
+                    if (current_field == 0 && strlen(chat_name) < MAX_NAME_LENGTH) {
+                        chat_name[strlen(chat_name)] = ch;
+                    }
+                    break;
+            }
+        }
+        if ((cur_y == 9 && cur_x >= 10 && cur_x <= 15) || (cur_y == 9 && cur_x >= 28 && cur_x <= 33)) {
+            if (!button_focused) {
+                button_focused = true;
+                apply_highlight(create_chat_win, 9, cur_x, "[Save]");
+                apply_highlight(create_chat_win, 9, cur_x, "[Back]");
+            }
+        } else {
+            if (button_focused) {
+                button_focused = false;
+                remove_highlight(create_chat_win, 9, 10, "[Save]");
+                remove_highlight(create_chat_win, 9, 28, "[Back]");
+            }
+        }
+        if (current_field == 0) {
+            mvwprintw(create_chat_win, 2, 15, "%s", chat_name);
+            wmove(create_chat_win, 2, 15 + strlen(chat_name));
+        } else if (current_field == 1) {
+            mvwprintw(create_chat_win, 4, 15, "%c", is_private ? 'y' : 'n');
+            wmove(create_chat_win, 4, 15);
+        }
+        wrefresh(create_chat_win);
+    }
+
+    // Return focus to the menu window
+    delwin(create_chat_win);
+    touchwin(menu_win);
+    wrefresh(menu_win);
+    touchwin(chat_win);
+    wrefresh(chat_win);
+    touchwin(input_win);
+    wrefresh(input_win);
+    menu_focused = true;
+}
+
+void show_active_chats()
+{
+    int startx, starty, width, height;
+    height = 20;
+    width = 50;
+    starty = (LINES - height) / 2;
+    startx = (COLS - width) / 2;
+    WINDOW *list_of_users_win = newwin(20, 50, starty, startx);
+    box(list_of_users_win, 0, 0);
+    wrefresh(list_of_users_win);
+
+    for(int i = 0; i < 10; i++)
+    {
+        mvwprintw(list_of_users_win, i+1, 1, "Chat %d", i);
+    }
+
+    int ch;
+    bool quit = false;
+    keypad(list_of_users_win, TRUE);
+
+    while (!quit) {
+        ch = wgetch(list_of_users_win);
+        switch (ch) {
+            case 27:
+                quit = true;
+                break;
+        }
+    }
+    delwin(list_of_users_win);
+    touchwin(menu_win);
+    wrefresh(menu_win);
+    touchwin(chat_win);
+    wrefresh(chat_win);
+    touchwin(input_win);
+    wrefresh(input_win);
+    menu_focused = true;
+}
+
+void show_active_users()
+{
+    int startx, starty, width, height;
+    height = 20;
+    width = 50;
+    starty = (LINES - height) / 2;
+    startx = (COLS - width) / 2;
+    WINDOW *active_users_win = newwin(20, 50, starty, startx);
+    box(active_users_win, 0, 0);
+    wrefresh(active_users_win);
+
+    for(int i = 0; i < 10; i++)
+    {
+        mvwprintw(active_users_win, i+1, 1, "User %d", i);
+    }
+
+    int ch;
+    bool quit = false;
+    keypad(active_users_win, TRUE);
+
+    while (!quit) {
+        ch = wgetch(active_users_win);
+        switch (ch) {
+            case 27:
+                quit = true;
+                break;
+        }
+    }
+    delwin(active_users_win);
+    touchwin(menu_win);
+    wrefresh(menu_win);
+    touchwin(chat_win);
+    wrefresh(chat_win);
+    touchwin(input_win);
+    wrefresh(input_win);
+    menu_focused = true;
+}
+
+//void display_settings() {
+//    WINDOW *settings_win;
+//    int settings_win_width = 50;
+//    int settings_win_height = 10;
+//    int startx = (COLS - settings_win_width) / 2;
+//    int starty = (LINES - settings_win_height) / 2;
+//
+//    settings_win = newwin(settings_win_height, settings_win_width, starty, startx);
+//    box(settings_win, 0, 0);
+//    wrefresh(settings_win);
+//
+//    // Fields
+//    FIELD *field[3];
+//    field[0] = new_field(1, 20, 1, 18, 0, 0); // Name
+//    field[1] = new_field(1, 20, 3, 18, 0, 0); // Password
+//    field[2] = NULL;
+//
+//    set_field_back(field[0], A_UNDERLINE);
+//    set_field_back(field[1], A_UNDERLINE);
+//
+//    FORM *form = new_form(field);
+//    set_form_win(form, settings_win);
+//    set_form_sub(form, derwin(settings_win, settings_win_height - 4, settings_win_width - 4, 2, 2));
+//
+//    post_form(form);
+//    wrefresh(settings_win);
+//
+//    // Labels
+//    mvwprintw(settings_win, 2, 2, "Name:");
+//    mvwprintw(settings_win, 4, 2, "Password:");
+//
+//    // Buttons
+//    mvwprintw(settings_win, 7, 10, "[Save]");
+//    mvwprintw(settings_win, 7, 28, "[Back]");
+//
+//    bool quit = false;
+//    int ch;
+//    int current_field = 0;
+//    bool button_focused = false;
+//    form_driver(form, REQ_FIRST_FIELD);
+//
+//    keypad(settings_win, TRUE); // Enable keypad mode to capture arrow keys
+//
+//    while (!quit) {
+//        ch = wgetch(settings_win);
+//        int cur_y, cur_x;
+//        getyx(settings_win, cur_y, cur_x);
+//
+//        if (!button_focused) {
+//            // Handle arrow keys
+//            switch (ch) {
+//                case KEY_DOWN:
+//                    form_driver(form, REQ_NEXT_FIELD);
+//                    form_driver(form, REQ_END_LINE);
+//                    current_field++;
+//                    break;
+//                case KEY_UP:
+//                    form_driver(form, REQ_PREV_FIELD);
+//                    form_driver(form, REQ_END_LINE);
+//                    current_field--;
+//                    break;
+//                case KEY_LEFT:
+//                    form_driver(form, REQ_PREV_CHAR);
+//                    break;
+//                case KEY_RIGHT:
+//                    form_driver(form, REQ_NEXT_CHAR);
+//                    break;
+//                case 27: // ESC
+//                    quit = true;
+//                    break;
+//                case 10: // Enter
+//                    if (current_field == 2) {
+//                        button_focused = true;
+//                        mvwprintw(settings_win, 7, 10, " Save ");
+//                        mvwprintw(settings_win, 7, 28, " Back ");
+//                        wmove(settings_win, 7, 10);
+//                    }
+//                    break;
+//                default:
+//                    form_driver(form, ch);
+//                    break;
+//            }
+//        } else {
+//            switch (ch) {
+//                case KEY_LEFT:
+//                    if (cur_x == 28) {
+//                        mvwprintw(settings_win, 7, 10, " Save ");
+//                        mvwprintw(settings_win, 7, 28, " Back ");
+//                        wmove(settings_win, 7, 10);
+//                    }
+//                    break;
+//                case KEY_RIGHT:
+//                    if (cur_x == 10) {
+//                        mvwprintw(settings_win, 7, 10, " Save ");
+//                        mvwprintw(settings_win, 7, 28, " Back ");
+//                        wmove(settings_win, 7, 28);
+//                    }
+//                    break;
+//                case 10: // Enter
+//                    if (cur_x == 10) {
+//                        // Save
+//                        quit = true;
+//                    } else if (cur_x == 28) {
+//                        // Back
+//                        quit = true;
+//                    }
+//                    break;
+//                case 27: // ESC
+//                    quit = true;
+//                    break;
+//            }
+//        }
+//
+//        wrefresh(settings_win);
+//    }
+//
+//    // Clean up
+//    unpost_form(form);
+//    free_form(form);
+//    for (int i = 0; i < 2; i++) {
+//        free_field(field[i]);
+//    }
+//
+//    // Close the settings window
+//    delwin(settings_win);
+//    touchwin(menu_win);
+//    wrefresh(menu_win);
+//    touchwin(chat_win);
+//    wrefresh(chat_win);
+//    touchwin(input_win);
+//    wrefresh(input_win);
+//    menu_focused = true;
+//}
 
 void* message_handler(void* arg) {
     while (true) {
@@ -238,13 +584,13 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
 void handle_menu_selection(int choice) {
     switch (choice) {
         case 0: // Create new chat
-//            create_new_chat();
+            create_new_chat();
             break;
         case 1: // Show list of active chats
-//            show_active_chats();
+            show_active_chats();
             break;
         case 2: // Show active users
-//            show_active_users();
+            show_active_users();
             break;
         case 3: // Settings
 //            display_settings();
@@ -255,7 +601,7 @@ void handle_menu_selection(int choice) {
     }
 }
 
-void init_windows() {
+void init_windows(void) {
     init_menu();
     init_chat();
     init_input();

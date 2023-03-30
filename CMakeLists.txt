@@ -330,6 +330,11 @@ function(link_pthread_libraries target_name)
     target_link_libraries(${target_name} PUBLIC ${LIBPTHREAD})
 endfunction()
 
+# link form libraries
+function(link_form_libraries target_name)
+    find_library(LIBFORM form REQUIRED)
+    target_link_libraries(${target_name} PUBLIC ${LIBFORM})
+endfunction()
 
 function(link_gtk_libraries target_name)
 endfunction()
