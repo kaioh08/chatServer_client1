@@ -14,10 +14,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
-#include <form.h>
 #include <sys/time.h>
 
-#define SERVER_PORT 8888
+#define SERVER_PORT 4981
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
@@ -35,6 +34,12 @@ bool menu_focused = false;
 int menu_highlight = 0;
 bool menu_active = true;
 
+struct arg {
+    struct dc_env *env;
+    struct dc_error *error;
+    int socket_fd;
+};
+
 pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 
@@ -43,14 +48,17 @@ void generate_timestamp(char* timestamp, size_t len);
 void init_menu(void);
 void init_chat(void);
 void init_input(void);
-void* input_handler(void* arg);
+void* input_handler(void *arg);
 void* message_handler(void* arg);
 void draw_menu(int highlight);
 void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd);
 void apply_highlight(WINDOW *win, int y, int x, const char *str);
 void remove_highlight(WINDOW *win, int y, int x, const char *str);
+void show_active_users(struct dc_env *env, struct dc_error *err, int socket_fd);
+void show_active_chats(struct dc_env *env, struct dc_error *err, int socket_fd);
 void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd);
-void display_settings();
+void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice);
+void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd );
 void quit();
 
 long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd);
@@ -207,7 +215,7 @@ void create_new_chat() {
     menu_focused = true;
 }
 
-void show_active_chats()
+void show_active_chats(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
     int startx, starty, width, height;
     height = 20;
@@ -245,7 +253,7 @@ void show_active_chats()
     menu_focused = true;
 }
 
-void show_active_users()
+void show_active_users(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
     int startx, starty, width, height;
     height = 20;
@@ -283,7 +291,7 @@ void show_active_users()
     menu_focused = true;
 }
 
-void display_settings() {
+void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd) {
         // create a new window for the display name update form
         WINDOW *update_win = newwin(10, 60, (LINES - 10) / 2, (COLS - 60) / 2);
         box(update_win, 0, 0);
@@ -311,6 +319,10 @@ void display_settings() {
         while (!quit) {
             ch = wgetch(update_win);
             switch (ch) {
+                case 27: // Escape
+                case KEY_BACKSPACE:
+                    quit = true;
+                    break;
                 case KEY_LEFT:
                 case KEY_RIGHT:
                     // toggle focus between buttons
@@ -497,6 +509,7 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                         mvprintw(y - 2, x / 2 - 15, "Success: logged in");
                         wrefresh(login_win);
                         init_windows();
+                        refresh();
                         done = true;
                     }
 //                    draw_register_window(env, err, socket_fd);
@@ -524,19 +537,19 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
     delwin(login_win);
 }
 
-void handle_menu_selection(int choice) {
+void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice) {
     switch (choice) {
         case 0: // Create new chat
-            create_new_chat();
+            create_new_chat(env, err, socket_fd);
             break;
         case 1: // Show list of active chats
-            show_active_chats();
+            show_active_chats(env, err, socket_fd);
             break;
         case 2: // Show active users
-            show_active_users();
+            show_active_users(env, err, socket_fd);
             break;
         case 3: // Settings
-            display_settings();
+            display_settings(env, err, socket_fd);
             break;
         case 4:
             quit();
@@ -717,8 +730,6 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
                         mvprintw(displayname_y + 6, x / 2 - 15, "Registration successful");
                         wrefresh(register_win);
                         sleep(1);
-                        done = true;
-                        //return to login screen
                         draw_login_win(env, err, socket_fd);
                         refresh();
                         done=true;
@@ -743,16 +754,29 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
 
     free(buffer);
     noecho();
+    clear();
     refresh();
     delwin(register_win);
 }
 
 void* input_handler(void* arg) {
     int ch;
+    struct dc_env *env;
+    struct dc_error *err;
+    int socket_fd;
+
+    struct arg *args = (struct arg *) arg;
+    env = args->env;
+    err = args->error;
+    socket_fd = args->socket_fd;
+
     bool quit = false;
     int input_idx = 0;
     char input_buffer[COLS - 2];
-    char timestamp[17];
+    char timestamp[17] = "00000000";
+    char message[1024];
+    char name[20] = "Vasily";
+    char channel_name[1024] = "channel";
     char ETX[3] = "\x03";
     memset(input_buffer, 0, sizeof(input_buffer));
     draw_menu(menu_highlight);
@@ -782,7 +806,7 @@ void* input_handler(void* arg) {
                 case KEY_ENTER:
                 case '\n':
                 case '\r':
-                    handle_menu_selection(menu_highlight);
+                    handle_menu_selection(env, err, socket_fd, menu_highlight);
                     break;
                 case '\t': // Press 'Tab' to switch focus between input and menu
                     menu_focused = !menu_focused;
@@ -802,14 +826,11 @@ void* input_handler(void* arg) {
                 case '\n':
                 case '\r':
 
-                    generate_timestamp(timestamp, sizeof(timestamp));
-                    char message[1024];
-                    char *name;
-                    char channel_name[1024];
-                    snprintf(message, sizeof(message), "%s%c%s%c%s%c%s%c",
+
+                    snprintf(message, sizeof(message), "%s%s%s%s%s%s%s%s",
                              name, ETX, channel_name, ETX,
                              input_buffer, ETX, timestamp, ETX);
-//                    send_create_message(env, err, socket_fd, message);
+                    send_create_message(env, err, socket_fd, message);
 
                     werase(input_win);
                     box(input_win, 0, 0);
@@ -881,6 +902,20 @@ int main(int argc, char *argv[])
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
+    struct dc_env *env1;
+    struct dc_error *err1;
+    int socket_fd1;
+//    void *arg;
+
+    err1 = dc_error_create(false);
+    env1 = dc_env_create(err1, true, NULL);
+
+
+//    arg = malloc(sizeof(struct dc_env*) + sizeof(struct dc_error*) + sizeof(socket_fd));
+//    memcpy((char* )arg, &env, sizeof(struct dc_env*)); // ff ff ff ff
+//    memcpy((char *)arg + sizeof(struct dc_env*), &err, sizeof(struct dc_error*)); // ff ff ff ff
+//    memcpy((char *)arg + sizeof(struct dc_env*) + sizeof(struct dc_error*), &socket_fd, sizeof(socket_fd)); // ff ff
+
     pthread_mutex_init(&mutex, NULL);
     pthread_t input_thread, message_thread;
 //    pthread_create(&message_thread, NULL, message_handler, NULL);
@@ -889,9 +924,6 @@ int main(int argc, char *argv[])
     init_pair(1, COLOR_WHITE, COLOR_BLUE);
     init_pair(2, COLOR_BLACK, COLOR_WHITE);
     init_pair(3, COLOR_RED, COLOR_WHITE);
-    struct dc_env *env;
-    struct dc_error *err;
-    int socket_fd;
     struct sockaddr_in server_addr;
     char buffer[MAX_SIZE];
     bool run_client = true;
@@ -902,8 +934,6 @@ int main(int argc, char *argv[])
         run_client = false;
     }
 
-    err = dc_error_create(true);
-    env = dc_env_create(err, true, NULL);
 
     char buffer2[1024];
     ssize_t num_read = read(STDIN_FILENO, buffer2, sizeof(buffer2));
@@ -913,15 +943,20 @@ int main(int argc, char *argv[])
     }
     fprintf(stderr, "Child process received: %.*s", (int)num_read, buffer2);
 
-    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    socket_fd1 = socket(AF_INET, SOCK_STREAM, 0);
+    struct arg arg1;
+    arg1.error = err1;
+    arg1.env = env1;
+    arg1.socket_fd = socket_fd1;
 
-    if (socket_fd < 0)
+
+    if (socket_fd1 < 0)
     {
         perror("Failed to create socket");
         run_client = false;
     }
 
-    dc_memset(env, &server_addr, 0, sizeof(server_addr));
+    dc_memset(env1, &server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(SERVER_PORT);
     printf("Trying to connect to server %s: %d", argv[1], SERVER_PORT);
@@ -932,7 +967,7 @@ int main(int argc, char *argv[])
         run_client = false;
     }
 
-    if (connect(socket_fd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
+    if (connect(socket_fd1, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
         perror("Connect failed");
         run_client = false;
@@ -941,18 +976,18 @@ int main(int argc, char *argv[])
     if (run_client) {
         fprintf(stderr, "Connected to server.\n");
         refresh();
-//        draw_login_win(env, err, socket_fd);
+//        draw_login_win(env1, err1, socket_fd1);
         init_windows();
-        pthread_create(&input_thread, NULL, input_handler, NULL);
+        pthread_create(&input_thread, NULL, input_handler, &arg1);
     }
 
-    free(env);
-    free(err);
+    free(env1);
+    free(err1);
     pthread_join(input_thread, NULL);
 //    pthread_join(message_thread, NULL);
 
     pthread_mutex_destroy(&mutex);
-    close(socket_fd);
+    close(socket_fd1);
 
     return EXIT_SUCCESS;
 }

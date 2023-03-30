@@ -130,12 +130,13 @@ void send_create_channel(struct dc_env *env, struct dc_error *err, int fd, const
 void send_create_message(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
+
     // Create header
     struct binary_header header;
     header.version = DEFAULT_VERSION;
     header.type = CREATE;
     header.object = MESSAGE;
-    header.body_size = dc_strlen(env, body);
+    header.body_size = strlen( body);
     // Display and send the header
     display_header(&header, body);
     serialize_header(env, err, &header, fd, body);
