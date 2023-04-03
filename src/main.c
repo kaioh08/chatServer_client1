@@ -930,6 +930,19 @@ int main(int argc, char *argv[])
         run_client = false;
     }
 
+    uint16_t server_port;
+    if (argc >= 3)
+    {
+        server_port = strtol(argv[2], NULL, 10);
+        if(server_port == 0)
+        {
+            fprintf(stderr, "Bad Port\n");
+        }
+    }
+    else
+    {
+        server_port = SERVER_PORT;
+    }
 
     char buffer2[1024];
     ssize_t num_read = read(STDIN_FILENO, buffer2, sizeof(buffer2));
@@ -954,8 +967,8 @@ int main(int argc, char *argv[])
 
     dc_memset(env1, &server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
-    printf("Trying to connect to server %s: %d", argv[1], SERVER_PORT);
+    server_addr.sin_port = htons(server_port);
+    printf("Trying to connect to server %s: %d", argv[1], server_port);
 
     if (inet_pton(AF_INET, argv[1], &server_addr.sin_addr) <= 0)
     {
