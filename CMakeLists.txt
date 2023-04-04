@@ -8,7 +8,7 @@ project(process-server
 set(CMAKE_C_STANDARD 17)
 
 option(DC_BUILD_SANITIZE "Build with sanitize" OFF)
-if(NOT DC_BUILD_SANITIZE)
+if(DC_BUILD_SANITIZE)
     set(SANITIZE TRUE)
 endif()
 
@@ -347,7 +347,9 @@ function(add_executable_target target_name source_files main_source_files header
         link_libraries(${target_name} ${libraries_files})
     endif ()
 
-    target_link_libraries(${target_name} PRIVATE -fsanitize=undefined)
+    if(SANITIZE)
+        target_link_libraries(${target_name} PRIVATE -fsanitize=undefined)
+    endif()
 
     if (link_libraries_fn STREQUAL "link_ncurses_libraries")
         link_ncurses_libraries(${target_name})
