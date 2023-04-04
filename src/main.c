@@ -15,8 +15,9 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <time.h>
 
-#define SERVER_PORT 8888
+#define SERVER_PORT 5050
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
@@ -26,7 +27,7 @@
 #define MAX_SIZE 1024
 #define LOGIN_WIDTH 50
 #define LOGIN_HEIGHT 30
-
+char *display_name;
 #define REGISTER_WIDTH 40
 #define REGISTER_HEIGHT 15
 
@@ -92,9 +93,10 @@ void remove_highlight(WINDOW *win, int y, int x, const char *str) {
     mvwprintw(win, y, x, str);
 }
 
-void create_new_chat() {
+void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd) {
     WINDOW *create_chat_win;
     bool is_private = false;
+    char ETX[3] = "\x03";
     bool menu_focused = false;
     char chat_name[MAX_NAME_LENGTH + 1] = {0};
     char password[MAX_PASSWORD_LENGTH + 1] = {0};
@@ -113,7 +115,6 @@ void create_new_chat() {
 // Buttons
     mvwprintw(create_chat_win, 9, 10, "[Save]");
     mvwprintw(create_chat_win, 9, 28, "[Back]");
-
     bool quit = false;
     int ch;
     int current_field = 0;
@@ -164,6 +165,8 @@ void create_new_chat() {
                         // TODO: Add create server dispatch request
                         char publicity = is_private ? '0' : '1';
                         char request_body[256] = {0};
+                        snprintf(request_body, 256, "%s%s%s%s%c%s", chat_name, ETX, display_name, ETX, publicity, ETX);
+                        send_create_channel(env, err, socket_fd, request_body);
                         wprintw(create_chat_win, "Chat name: %s, publicity: %c", chat_name, publicity);
                         wrefresh(create_chat_win);
                         sleep(1);
@@ -382,7 +385,7 @@ void* message_handler(void* arg) {
 void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
     int x, y, login_x, login_y, password_x, password_y, login_len, password_len;
-    char username[20], password[20];
+    char username_login[20], password[20];
     char ETX[3] = "\x03";
     char *buffer = malloc(sizeof(char) * MAX_SIZE);
     memset(buffer, 0, sizeof(char) * MAX_SIZE);
@@ -408,7 +411,7 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
     echo();
     move(login_y, login_x + login_len);
     refresh();
-    getstr(username);
+    getstr(username_login);
 
 
     move(password_y, password_x + password_len);
@@ -418,9 +421,9 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
 
 
 
-    if(strlen(username) > 20)
+    if(strlen(username_login) > 20)
     {
-        mvprintw(password_y + 6, x / 2 - 15, "Error: username too long");
+        mvprintw(password_y + 6, x / 2 - 15, "Error: username_login too long");
         quit();
     }
     if(strlen(password) < 6)
@@ -430,7 +433,7 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
 //        quit();
     }
 
-    strcat(buffer, username);
+    strcat(buffer, username_login);
     strcat(buffer, ETX);
     strcat(buffer, password);
     strcat(buffer, ETX);
@@ -508,6 +511,8 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                     } else {
                         mvprintw(y - 2, x / 2 - 15, "Success: logged in");
                         wrefresh(login_win);
+                        display_name = malloc(sizeof(char) * strlen(username_login) + 1);
+                        strcpy(display_name, username_login);
                         init_windows();
                         refresh();
                         done = true;
@@ -596,7 +601,7 @@ void init_input(void) {
 void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
     int x, y, username_x, username_y, password_x, password_y, displayname_x, displayname_y, username_len, password_len, displayname_len;
-    char username[20], displayname[20], password[20];
+    char username_register[20], displayname[20], password[20];
     char ETX[3] = "\x03";
     char *buffer = malloc(sizeof(char) * MAX_SIZE);
     memset(buffer, 0, sizeof(char) * MAX_SIZE);
@@ -632,7 +637,7 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
     echo();
     move(username_y, username_x + username_len);
     refresh();
-    getstr(username);
+    getstr(username_register);
 
     move(password_y, password_x + password_len);
     refresh();
@@ -644,9 +649,9 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
     echo();
     getstr(displayname);
 
-    if(strlen(username) > 20)
+    if(strlen(username_register) > 20)
     {
-        mvprintw(displayname_y + 6, x / 2 - 15, "Error: username too long");
+        mvprintw(displayname_y + 6, x / 2 - 15, "Error: display_name too long");
         quit();
     }
     if(strlen(password) < 6)
@@ -655,7 +660,7 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
 //        quit();
     }
 
-    strcat(buffer, username);
+    strcat(buffer, username_register);
     strcat(buffer, ETX);
     strcat(buffer, displayname);
     strcat(buffer, ETX);
@@ -719,7 +724,7 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
                     long response = get_response_code(env, err, socket_fd);
                     if(response != 201)
                     {
-                        mvprintw(displayname_y + 6, x / 2 - 15, "Error: username already exists");
+                        mvprintw(displayname_y + 6, x / 2 - 15, "Error: display_name already exists");
                         wrefresh(register_win);
                         sleep(2);
                         draw_register_window(env, err, socket_fd);
@@ -773,10 +778,10 @@ void* input_handler(void* arg) {
     bool quit = false;
     int input_idx = 0;
     char input_buffer[COLS - 2];
-    char timestamp[17] = "12345678";
+    time_t time_send = time(NULL);
+    uint8_t send_time = time_send;
     char message[1024];
-    char name[20] = "Vasily";
-    char channel_name[1024] = "channel";
+    char channel_name[30] = "comp4981 channel";
     char ETX[3] = "\x03";
     memset(input_buffer, 0, sizeof(input_buffer));
     draw_menu(menu_highlight);
@@ -827,9 +832,10 @@ void* input_handler(void* arg) {
                 case '\r':
 
 
-                    snprintf(message, sizeof(message), "%s%s%s%s%s%s%s%s",
-                             name, ETX, channel_name, ETX,
-                             input_buffer, ETX, timestamp, ETX);
+                    snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
+                             display_name, ETX, channel_name, ETX,
+                             input_buffer, ETX, send_time, ETX);
+                    wprintw(input_win, "%s", message);
                     send_create_message(env, err, socket_fd, message);
 
                     werase(input_win);
@@ -985,8 +991,8 @@ int main(int argc, char *argv[])
     if (run_client) {
         fprintf(stderr, "Connected to server.\n");
         refresh();
-//        draw_login_win(env1, err1, socket_fd1);
-        init_windows();
+        draw_login_win(env1, err1, socket_fd1);
+//        init_windows();
         pthread_create(&input_thread, NULL, input_handler, &arg1);
     }
 
