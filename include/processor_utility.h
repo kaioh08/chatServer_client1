@@ -4,6 +4,7 @@
 #include <dc_env/env.h>
 #include <dc_error/error.h>
 #include <arpa/inet.h>
+#include <dc_util/networking.h>
 
 #define DEFAULT_SIZE 1024
 #define DEFAULT_VERSION 0x1
@@ -13,7 +14,7 @@ enum Type {
     READ = 0x2,
     UPDATE = 0x3,
     DESTROY = 0x4,
-    PING = 0x8
+    PINGUSER = 0x9
 };
 
 enum Object {
@@ -23,44 +24,44 @@ enum Object {
     AUTH = 0x04
 };
 
-//changed it to uint32_t to see if the network order is correct
-struct binary_header {
-//    unsigned int version : 4; // 4 bit for version number
-//    unsigned int type : 4; // 4 bit for type number
-    uint32_t version : 4; // 4 bit for version number
-    uint32_t type : 4; // 4 bit for type number
-    uint8_t object; // 8 bit for object type
-    uint16_t body_size; // 16 bit for body size
+struct binary_header_field {
+    uint32_t version : 4; // 4 bit version number
+    uint32_t type : 4; // 4 bit type number
+    uint8_t object; // 8 bit object type
+    uint16_t body_size; // 16 bit body size
 };
-struct binary_header * deserialize_header(uint32_t value);
-void display_header(struct binary_header * header, const char * data);
-void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header * header, int fd, const char * body);
-/**
- * Create
- */
+
+struct request{
+    char * type;
+    char * obj;
+    char * data;
+};
+
+struct server_options{
+    struct dc_env *env;
+    struct dc_error *err;
+    FILE * debug_log_file;
+
+    int socket_fd;
+};
+
+struct binary_header_field * deserialize_header(struct dc_env *env, struct dc_error *err, int fd, uint32_t value);
+void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
+                      const char * body);
 void send_create_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_create_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_create_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_create_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 
-/**
- * Read
- */
 void send_read_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_read_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_read_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 
-/**
- * Update
- */
 void send_update_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_update_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_update_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_update_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 
-/**
- * Delete
- */
 void send_delete_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_delete_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_delete_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
