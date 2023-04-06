@@ -1,6 +1,5 @@
 #include "../include/processor_utility.h"
 #include <arpa/inet.h>
-//#include "../include/gui.h"
 #include <dc_c/dc_stdio.h>
 #include <dc_c/dc_stdlib.h>
 #include <dc_c/dc_string.h>
@@ -17,7 +16,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#define SERVER_PORT 5050
+#define SERVER_PORT 5432
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
@@ -25,11 +24,8 @@
 #define MAX_PASSWORD_LENGTH 20
 #define MENU_ITEMS 5
 #define MAX_SIZE 1024
-#define LOGIN_WIDTH 50
-#define LOGIN_HEIGHT 30
 char *display_name;
-#define REGISTER_WIDTH 40
-#define REGISTER_HEIGHT 15
+char *current_chat;
 
 bool menu_focused = false;
 int menu_highlight = 0;
@@ -104,7 +100,7 @@ void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd) {
     int create_chat_win_height = 12;
     int startx = (COLS - create_chat_win_width) / 2;
     int starty = (LINES - create_chat_win_height) / 2;
-
+    current_chat = malloc(MAX_NAME_LENGTH + 1);
     create_chat_win = newwin(create_chat_win_height, create_chat_win_width, starty, startx);
     box(create_chat_win, 0, 0);
     wrefresh(create_chat_win);
@@ -168,7 +164,10 @@ void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd) {
                         snprintf(request_body, 256, "%s%s%s%s%c%s", chat_name, ETX, display_name, ETX, publicity, ETX);
                         send_create_channel(env, err, socket_fd, request_body);
                         wprintw(create_chat_win, "Chat name: %s, publicity: %c", chat_name, publicity);
+//                        if(
+                        current_chat = strdup(chat_name);
                         wrefresh(create_chat_win);
+                        refresh();
                         sleep(1);
                         // You can process the data and send it to the server here
                         quit = true;
@@ -216,6 +215,7 @@ void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd) {
     touchwin(input_win);
     wrefresh(input_win);
     menu_focused = true;
+    refresh();
 }
 
 void show_active_chats(struct dc_env *env, struct dc_error *err, int socket_fd)
@@ -500,7 +500,6 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                 {
                     send_create_auth(env, err, socket_fd, buffer);
                     long response = get_response_code(env, err, socket_fd);
-
                     if (response != 200)
                     {
                         mvprintw(y - 2, x / 2 - 15, "Error: invalid credentials");
@@ -511,8 +510,8 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                     } else {
                         mvprintw(y - 2, x / 2 - 15, "Success: logged in");
                         wrefresh(login_win);
-                        display_name = malloc(sizeof(char) * strlen(username_login) + 1);
-                        strcpy(display_name, username_login);
+//                        display_name = malloc(sizeof(char) * strlen(username_login) + 1);
+//                        strcpy(display_name, username_login);
                         init_windows();
                         refresh();
                         done = true;
@@ -830,14 +829,12 @@ void* input_handler(void* arg) {
                 case KEY_ENTER:
                 case '\n':
                 case '\r':
-
-
                     snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
-                             display_name, ETX, channel_name, ETX,
+                             display_name, ETX, current_chat, ETX,
                              input_buffer, ETX, send_time, ETX);
                     wprintw(input_win, "%s", message);
                     send_create_message(env, err, socket_fd, message);
-
+                    wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));
                     werase(input_win);
                     box(input_win, 0, 0);
                     wrefresh(input_win);
@@ -888,20 +885,6 @@ void* input_handler(void* arg) {
     }
     return NULL;
 }
-
-void generate_timestamp(char* timestamp, size_t len) {
-    static const char* const hex = "0123456789ABCDEF";
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    uint64_t ms = (tv.tv_sec * 1000LL) + (tv.tv_usec / 1000LL);
-    size_t i = 0;
-    for (; i < len - 1 && ms; i++) {
-        timestamp[i] = hex[ms & 0xF];
-        ms >>= 4;
-    }
-    timestamp[i] = '\0';
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -1011,6 +994,7 @@ long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
     uint32_t header;
     char body[MAX_SIZE];
+    long response;
     ssize_t n;
 
     // receive header from server
@@ -1024,23 +1008,42 @@ long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
 
     printf("RECEIVED FROM SERVER");
     // print deserialized header
-    fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
-    fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
-    fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
-    fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
+//    fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
+//    fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
+//    fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
+//    fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
 
     // Read body and clear buffer
     read(socket_fd, &body, MAX_SIZE);
-//            body[(binaryHeaderField->body_size)] = '\0';
-    fprintf(stderr, "Body: %s\n", body);
 
-    // parse body until the delimeter "\0x3"
-    long response;
-    char *token = strtok(body, "\0x3");
-    // convert the first token to an int
-    response = dc_strtol(env, err, token, NULL, 10);
+    // Response is 200\0x3name\0x3
+    // get it the name and response code from the body
+    char *response_code = strtok(body, "\x3");
+    char *name = strtok(NULL, "\x3");
+
+    // assign name to global variable that is not malloced yet
+    display_name = malloc(strlen(name) + 1);
+    strcpy(display_name, name);
+
+
+    // convert response code to long
+    response = strtol(response_code, NULL, 10);
+
+    // print response code
+    fprintf(stderr, "Response Code: %ld\n", response);
+
+    // print name
+    fprintf(stderr, "Name: %s\n", name);
+
+    // free memory
+    free(binaryHeaderField);
+    dc_memset(env, body, 0, MAX_SIZE);
+
+
     return response;
 }
+
+
 
 
 void quit()
