@@ -27,6 +27,8 @@ set(CLIENT_SOURCE_MAIN
 set(CLIENT_HEADER_LIST
         ${INCLUDE_DIR}/processor_utility.h
         ${INCLUDE_DIR}/handling-response.h
+        ${SOURCE_DIR}/gui.c
+        ${SOURCE_DIR}/menu_functions.c
         )
 set(CLIENT_REQUIRED_LIBRARIES_LIST
         Curses
