@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <time.h>
+#include <sys/file.h>
 
 #define SERVER_PORT 5050
 #define MAX_SIZE 1024
@@ -929,7 +930,11 @@ int main(int argc, char *argv[])
     arg1.env = env1;
     arg1.socket_fd = socket_fd1;
 
-
+    struct server_options arg2;
+    arg2.err = err1;
+    arg2.env = env1;
+    arg2.socket_fd = socket_fd1;
+    arg2.debug_log_file = dc_fopen(env1, err1, "debug_log.txt", "a");
     if (socket_fd1 < 0)
     {
         perror("Failed to create socket");
@@ -959,7 +964,7 @@ int main(int argc, char *argv[])
         draw_login_win(env1, err1, socket_fd1);
 //        init_windows();
         pthread_create(&input_thread, NULL, input_handler, &arg1);
-        pthread_create(&message_thread, NULL, read_message_handler, &arg1);
+        pthread_create(&message_thread, NULL, read_message_handler, &arg2);
     }
 
     free(env1);
@@ -1019,7 +1024,7 @@ long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
     fprintf(stderr, "Name: %s\n", name);
 
     // free memory
-    free(binaryHeaderField);
+//    free(binaryHeaderField);
     dc_memset(env, body, 0, MAX_SIZE);
 
 

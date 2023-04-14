@@ -5,6 +5,22 @@
 #include <dc_error/error.h>
 #include <arpa/inet.h>
 #include <dc_util/networking.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <dc_c/dc_stdio.h>
+#include <dc_c/dc_stdlib.h>
+#include <dc_c/dc_string.h>
+#include <dc_env/env.h>
+#include <dc_error/error.h>
+#include <dc_posix/dc_unistd.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <dc_util/io.h>
 
 #define DEFAULT_SIZE 1024
 #define DEFAULT_VERSION 0x1
@@ -37,11 +53,6 @@ struct arg {
     int socket_fd;
 };
 
-typedef void (*message_handler)(void *arg);
-
-void *read_message_handler(void *arg);
-void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct binary_header_field *b_header, char *body);
-
 struct request{
     char * type;
     char * obj;
@@ -56,6 +67,11 @@ struct server_options{
 
     int socket_fd;
 };
+
+typedef void (*message_handler)(void *arg);
+
+void *read_message_handler(void *arg);
+void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct server_options *options, struct binary_header_field *b_header, char *body);
 
 struct binary_header_field * deserialize_header(struct dc_env *env, struct dc_error *err, int fd, uint32_t value);
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,

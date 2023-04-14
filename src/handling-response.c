@@ -8,25 +8,100 @@
 
 #define BASE 10
 
-void handle_server_ping_user(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_ping_channel(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-
-void handle_server_create(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_read(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_update(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_delete(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-
-void handle_create_user_response(struct server_options *options, char *body);
-void handle_create_channel_response(struct server_options *options, char *body);
-void handle_create_message_response(struct server_options *options, char *body);
-void handle_create_auth_response(struct server_options *options, char *body);
-
-void handle_read_user_response(struct server_options *options, char *body);
-void handle_read_channel_response(struct server_options *options, char *body);
-void handle_read_message_response(struct server_options *options, char *body);
-void handle_read_auth_response(struct server_options *options, char *body);
 
 void clear_debug_file_buffer(FILE * debug_log_file);
+
+void *read_message_handler(void *arg)
+{
+    struct dc_env *env;
+    struct dc_error *err;
+    int fd;
+    FILE *file;
+
+    struct server_options *args = (struct server_options *) arg;
+    env = args->env;
+    err = args->err;
+    fd = args->socket_fd;
+    file = args->debug_log_file;
+
+    DC_TRACE(env);
+
+    struct pollfd fds[1];
+    int timeout;
+    int ret;
+
+    memset(fds, 0, sizeof(fds));
+    timeout = 100;
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+    while(true)
+    {
+//        printf("Anything new?\n");
+        ret = poll(fds, 1, timeout);
+        if (ret < 0) {
+            perror("poll failed\n");
+        }
+        else if (ret == 0)
+        {
+//            printf("Didn't read anything in time\n");
+            continue;
+        }
+        else
+        {
+            //when fd has stuff, read the first few bytes to get the header fields
+            struct binary_header_field *b_header;
+            uint32_t unprocessed_binary_header;
+            ssize_t nread;
+            nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint32_t));
+            if(nread != sizeof(uint32_t))
+            {
+                perror("read failed at reading binary header\n");
+            }
+            b_header = deserialize_header(env, err, fd, unprocessed_binary_header);
+            //read the dispatch after getting the binary header
+            char *body;
+            body = dc_malloc(env, err, b_header->body_size);
+            nread = dc_read(env, err, fd, body, b_header->body_size);
+            if(nread != b_header->body_size)
+            {
+                perror("read failed at reading body\n");
+            }
+            //parse through the dispatch, call the right response handler
+            response_handler_wrapper(env, err, args, b_header, body);
+        }
+    }
+}
+
+void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct server_options *options, struct binary_header_field *b_header, char *body)
+{
+    switch(b_header->type)
+    {
+        case CREATE:
+        {
+            handle_server_create(options, b_header, body);
+            break;
+        }
+        case READ:
+        {
+            handle_server_read(options, b_header, body);
+            break;
+        }
+        case UPDATE:
+        {
+            handle_server_update(options, b_header, body);
+            break;
+        }
+        case DESTROY:
+        {
+            handle_server_delete(options, b_header, body);
+            break;
+        }
+        default:
+        {
+            perror("bad type\n");
+        }
+    }
+}
 
 void handle_server_request(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
     switch (binaryHeaderField->type)
