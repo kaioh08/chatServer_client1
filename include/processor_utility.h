@@ -5,7 +5,6 @@
 #include <dc_error/error.h>
 #include <arpa/inet.h>
 #include <dc_util/networking.h>
-#include <semaphore.h>
 
 #define DEFAULT_SIZE 1024
 #define DEFAULT_VERSION 0x1
