@@ -5,6 +5,7 @@
 #include <dc_error/error.h>
 #include <arpa/inet.h>
 #include <dc_util/networking.h>
+#include <semaphore.h>
 
 #define DEFAULT_SIZE 1024
 #define DEFAULT_VERSION 0x1
@@ -13,8 +14,7 @@ enum Type {
     CREATE = 0x1,
     READ = 0x2,
     UPDATE = 0x3,
-    DESTROY = 0x4,
-    PINGUSER = 0x9
+    DESTROY = 0x4
 };
 
 enum Object {
@@ -41,7 +41,7 @@ struct server_options{
     struct dc_env *env;
     struct dc_error *err;
 
-    FILE * debug_log_file;
+    FILE * log_file;
 
     int socket_fd;
 };
@@ -49,6 +49,8 @@ struct server_options{
 struct binary_header_field * deserialize_header(struct dc_env *env, struct dc_error *err, int fd, uint32_t value);
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
                       const char * body);
+void clear_debug_buffer(FILE * debug_log_file);
+
 void send_create_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_create_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_create_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
