@@ -22,7 +22,7 @@ struct arg {
  * @param err dc_error
  * @param socket_fd socket file descriptor
  */
-void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd);
+void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd, char *display_name, char *current_chat);
 
 /**
  * Draws active user list windows.
@@ -59,7 +59,8 @@ void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd );
  * @param socket_fd socket file descriptor
  * @param choice menu option
  */
-void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice);
+void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice, char *display_name,
+                           char *current_chat);
 
 
 

@@ -61,7 +61,6 @@ int main(int argc, char *argv[])
     init_pair(2, COLOR_BLACK, COLOR_WHITE);
     init_pair(3, COLOR_RED, COLOR_WHITE);
     struct sockaddr_in server_addr;
-    char buffer[MAX_SIZE];
     bool run_client = true;
 
     if (argc < 2)
@@ -126,7 +125,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Connected to server.\n");
         refresh();
         draw_login_win(env1, err1, socket_fd1);
-//        init_windows();
         pthread_create(&input_thread, NULL, input_handler, &arg1);
     }
 

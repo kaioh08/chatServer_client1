@@ -18,11 +18,11 @@
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
 #define MENU_ITEMS 5
-char *display_name;
-char *current_chat;
 bool menu_focused = false;
 int menu_highlight = 0;
 bool menu_active = true;
+char *display_name;
+char *current_chat;
 pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 
@@ -507,11 +507,10 @@ void* input_handler(void* arg) {
     time_t time_send = time(NULL);
     uint8_t send_time = time_send;
     char message[1024];
-    char channel_name[30] = "comp4981 channel";
     char ETX[3] = "\x03";
     dc_memset(env, input_buffer, 0, sizeof(input_buffer));
     draw_menu(menu_win, menu_highlight, MENU_ITEMS);
-
+    current_chat = dc_malloc(env, err,sizeof(char) * 20);
     while (!quit) {
         ch = getch();
 
@@ -537,7 +536,7 @@ void* input_handler(void* arg) {
                 case KEY_ENTER:
                 case '\n':
                 case '\r':
-                    handle_menu_selection(env, err, socket_fd, menu_highlight);
+                    handle_menu_selection(env, err, socket_fd, menu_highlight, display_name, current_chat);
                     break;
                 case '\t': // Press 'Tab' to switch focus between input and menu
                     menu_focused = !menu_focused;

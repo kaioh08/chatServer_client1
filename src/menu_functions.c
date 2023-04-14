@@ -6,7 +6,6 @@
 #include <dc_c/dc_string.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <menu.h>
 #include "menu_functions.h"
 #include "processor_utility.h"
@@ -20,25 +19,19 @@
 #define MAX_PASSWORD_LENGTH 20
 #define MENU_ITEMS 5
 #define MAX_SIZE 1024
-char *display_name;
-char *current_chat;
-pthread_mutex_t mutex;
 
-//WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
-
-
-void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd) {
+void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd, char *display_name, char *current_chat)
+{
     WINDOW *create_chat_win;
     bool is_private = false;
     char ETX[3] = "\x03";
     bool menu_focused = false;
-    char chat_name[MAX_NAME_LENGTH + 1] = {0};
-    char password[MAX_PASSWORD_LENGTH + 1] = {0};
+    char chat_name[MAX_NAME_LENGTH + 1];
+    char password[MAX_PASSWORD_LENGTH + 1];
     int create_chat_win_width = 50;
     int create_chat_win_height = 12;
     int startx = (COLS - create_chat_win_width) / 2;
     int starty = (LINES - create_chat_win_height) / 2;
-    current_chat = dc_malloc(env, err, MAX_NAME_LENGTH + 1);
     create_chat_win = newwin(create_chat_win_height, create_chat_win_width, starty, startx);
     box(create_chat_win, 0, 0);
     wrefresh(create_chat_win);
@@ -101,9 +94,8 @@ void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd) {
                         char request_body[256] = {0};
                         snprintf(request_body, 256, "%s%s%s%s%c%s", chat_name, ETX, display_name, ETX, publicity, ETX);
                         send_create_channel(env, err, socket_fd, request_body);
-                        wprintw(create_chat_win, "Chat name: %s, publicity: %c", chat_name, publicity);
-//                        if(
-                        current_chat = strdup(chat_name);
+                        dc_strcpy(env, current_chat, chat_name);
+//                        wprintw(create_chat_win, "Chat name: %s, publicity: %c", current_chat, publicity);
                         wrefresh(create_chat_win);
                         refresh();
                         sleep(1);
@@ -290,10 +282,12 @@ void show_active_chats(struct dc_env *env, struct dc_error *err, int socket_fd)
 //    menu_focused = true;
 }
 
-void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice) {
+void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice, char *display_name,
+                           char *current_chat)
+{
     switch (choice) {
         case 0: // Create new chat
-            create_new_chat(env, err, socket_fd);
+            create_new_chat(env, err, socket_fd, display_name, current_chat);
             break;
         case 1: // Show list of active chats
             show_active_chats(env, err, socket_fd);
