@@ -80,7 +80,7 @@ void init_chat(void);
 void init_input(void);
 
 /**
- * Gets resoinse code
+ * Gets response code.
  */
 long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd);
 
