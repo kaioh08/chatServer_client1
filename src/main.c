@@ -16,7 +16,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#define SERVER_PORT 5432
+#define SERVER_PORT 5050
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
 #define MENU_WIDTH 30
@@ -31,14 +31,9 @@ bool menu_focused = false;
 int menu_highlight = 0;
 bool menu_active = true;
 
-struct arg {
-    struct dc_env *env;
-    struct dc_error *error;
-    int socket_fd;
-};
-
 pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
+
 
 void init_windows(void);
 void generate_timestamp(char* timestamp, size_t len);
@@ -46,7 +41,6 @@ void init_menu(void);
 void init_chat(void);
 void init_input(void);
 void* input_handler(void *arg);
-void* message_handler(void* arg);
 void draw_menu(int highlight);
 void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd);
 void apply_highlight(WINDOW *win, int y, int x, const char *str);
@@ -56,7 +50,7 @@ void show_active_chats(struct dc_env *env, struct dc_error *err, int socket_fd);
 void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd);
 void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice);
 void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd );
-void quit();
+void quit(void);
 
 long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd);
 
@@ -370,16 +364,6 @@ void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd) {
         touchwin(input_win);
         wrefresh(input_win);
         menu_focused = true;
-}
-
-
-void* message_handler(void* arg) {
-    while (true) {
-        // TODO: Implement message sending and receiving
-        usleep(100000); // Sleep to prevent high CPU usage
-    }
-
-    return NULL;
 }
 
 void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
@@ -900,10 +884,8 @@ int main(int argc, char *argv[])
     err1 = dc_error_create(false);
     env1 = dc_env_create(err1, true, NULL);
 
-
     pthread_mutex_init(&mutex, NULL);
     pthread_t input_thread, message_thread;
-//    pthread_create(&message_thread, NULL, message_handler, NULL);
     curs_set(0);
     start_color();
     init_pair(1, COLOR_WHITE, COLOR_BLUE);
@@ -977,6 +959,7 @@ int main(int argc, char *argv[])
         draw_login_win(env1, err1, socket_fd1);
 //        init_windows();
         pthread_create(&input_thread, NULL, input_handler, &arg1);
+        pthread_create(&message_thread, NULL, read_message_handler, &arg1);
     }
 
     free(env1);
@@ -1042,7 +1025,6 @@ long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
 
     return response;
 }
-
 
 
 

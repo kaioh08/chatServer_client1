@@ -13,6 +13,199 @@
 #include <dc_error/error.h>
 #include <dc_posix/dc_unistd.h>
 #include <netinet/in.h>
+#include <poll.h>
+
+void *read_message_handler(void *arg)
+{
+    struct dc_env *env;
+    struct dc_error *err;
+    int fd;
+
+    struct arg *args = (struct arg *) arg;
+    env = args->env;
+    err = args->error;
+    fd = args->socket_fd;
+
+    DC_TRACE(env);
+
+    struct pollfd fds[1];
+    int timeout;
+    int ret;
+
+    memset(fds, 0, sizeof(fds));
+    timeout = 100;
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+    while(true)
+    {
+//        printf("Anything new?\n");
+        ret = poll(fds, 1, timeout);
+        if (ret < 0) {
+            perror("poll failed\n");
+        }
+        else if (ret == 0)
+        {
+//            printf("Didn't read anything in time\n");
+            continue;
+        }
+        else
+        {
+            //when fd has stuff, read the first few bytes to get the header fields
+            struct binary_header *b_header;
+            uint32_t unprocessed_binary_header;
+            ssize_t nread;
+            nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint32_t));
+            if(nread != sizeof(uint32_t))
+            {
+                perror("read failed at reading binary header\n");
+            }
+            b_header = deserialize_header(unprocessed_binary_header);
+            //read the dispatch after getting the binary header
+            char *body;
+            body = dc_malloc(env, err, b_header->body_size);
+            nread = dc_read(env, err, fd, body, b_header->body_size);
+            if(nread != b_header->body_size)
+            {
+                perror("read failed at reading body\n");
+            }
+            //parse through the dispatch, call the right response handler
+            response_handler_wrapper(env, err, b_header, body);
+        }
+    }
+}
+
+void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct binary_header *b_header, char *body)
+{
+    switch(b_header->type)
+    {
+        case CREATE:
+        {
+            switch(b_header->object)
+            {
+                case USER:
+                {
+                    printf("call CREATE_USER response handler\n");
+                    break;
+                }
+                case CHANNEL:
+                {
+                    printf("call CREATE_CHANNEL response handler\n");
+                    break;
+                }
+                case MESSAGE:
+                {
+                    printf("call CREATE_MESSAGE response handler\n");
+                    break;
+                }
+                case AUTH:
+                {
+                    printf("call CREATE_AUTH response handler\n");
+                    break;
+                }
+                default:
+                {
+                    perror("bad object\n");
+                }
+            }
+            break;
+        }
+        case READ:
+        {
+            switch(b_header->object)
+            {
+                case USER:
+                {
+                    printf("call READ_USER response handler\n");
+                    break;
+                }
+                case CHANNEL:
+                {
+                    printf("call READ_CHANNEL response handler\n");
+                    break;
+                }
+                case MESSAGE:
+                {
+                    printf("call READ_MESSAGE response handler\n");
+                    break;
+                }
+                case AUTH:
+                {
+                    printf("call READ_AUTH response handler\n");
+                    break;
+                }
+                default:
+                {
+                    perror("bad object\n");
+                }
+            }
+            break;
+        }
+        case UPDATE:
+        {            switch(b_header->object)
+            {
+                case USER:
+                {
+                    printf("call UPDATE_USER response handler\n");
+                    break;
+                }
+                case CHANNEL:
+                {
+                    printf("call UPDATE_CHANNEL response handler\n");
+                    break;
+                }
+                case MESSAGE:
+                {
+                    printf("call UPDATE_MESSAGE response handler\n");
+                    break;
+                }
+                case AUTH:
+                {
+                    printf("call UPDATE_AUTH response handler\n");
+                    break;
+                }
+                default:
+                {
+                    perror("bad object\n");
+                }
+            }
+            break;
+        }
+        case DESTROY:
+        {            switch(b_header->object)
+            {
+                case USER:
+                {
+                    printf("call DESTROY_USER response handler\n");
+                    break;
+                }
+                case CHANNEL:
+                {
+                    printf("call DESTROY_CHANNEL response handler\n");
+                    break;
+                }
+                case MESSAGE:
+                {
+                    printf("call DESTROY_MESSAGE response handler\n");
+                    break;
+                }
+                case AUTH:
+                {
+                    printf("call DESTROY_AUTH response handler\n");
+                    break;
+                }
+                default:
+                {
+                    perror("bad object\n");
+                }
+            }
+            break;
+        }
+        default:
+        {
+            perror("bad type\n");
+        }
+    }
+}
 
 struct binary_header * deserialize_header(uint32_t value) {
     struct binary_header * header;
