@@ -970,7 +970,7 @@ int main(int argc, char *argv[])
     free(env1);
     free(err1);
     pthread_join(input_thread, NULL);
-//    pthread_join(message_thread, NULL);
+    pthread_join(message_thread, NULL);
 
     pthread_mutex_destroy(&mutex);
     close(socket_fd1);

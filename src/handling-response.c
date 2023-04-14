@@ -39,18 +39,21 @@ void *read_message_handler(void *arg)
     fds[0].events = POLLIN;
     while(true)
     {
-//        printf("Anything new?\n");
+        fprintf(file, "Anything new?\n");
+        clear_debug_file_buffer(file);
         ret = poll(fds, 1, timeout);
         if (ret < 0) {
             perror("poll failed\n");
         }
         else if (ret == 0)
         {
-//            printf("Didn't read anything in time\n");
+//            fprintf(file, "Didn't read anything in time\n");
             continue;
         }
         else
         {
+            fprintf(file, "got sth\n");
+            clear_debug_file_buffer(file);
             //when fd has stuff, read the first few bytes to get the header fields
             struct binary_header_field *b_header;
             uint32_t unprocessed_binary_header;
