@@ -3,6 +3,8 @@
 
 #include "processor_utility.h"
 
+void clear_debug_file_buffer(FILE * debug_log_file);
+
 void handle_server_request(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
 void handle_server_ping_user(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
 void handle_server_ping_channel(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);

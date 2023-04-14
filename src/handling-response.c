@@ -8,8 +8,11 @@
 
 #define BASE 10
 
-
-void clear_debug_file_buffer(FILE * debug_log_file);
+void clear_debug_file_buffer(FILE * debug_log_file)
+{
+    fflush(debug_log_file);
+    setbuf(debug_log_file, NULL);
+}
 
 void *read_message_handler(void *arg)
 {
@@ -88,12 +91,12 @@ void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct s
         }
         case UPDATE:
         {
-            handle_server_update(options, b_header, body);
+//          TODO:  handle_server_update(options, b_header, body);
             break;
         }
         case DESTROY:
         {
-            handle_server_delete(options, b_header, body);
+//          TODO:  handle_server_delete(options, b_header, body);
             break;
         }
         default:
@@ -113,13 +116,13 @@ void handle_server_request(struct server_options * options, struct binary_header
             handle_server_read(options, binaryHeaderField, body);
             break;
         case UPDATE:
-            handle_server_update(options, binaryHeaderField, body);
+//          TODO:  handle_server_update(options, binaryHeaderField, body);
             break;
         case DESTROY:
-            handle_server_delete(options, binaryHeaderField, body);
+//          TODO:  handle_server_delete(options, binaryHeaderField, body);
             break;
         case PINGUSER:
-            handle_server_ping_user(options, binaryHeaderField, body);
+//          TODO:  handle_server_ping_user(options, binaryHeaderField, body);
             break;
         default:
             break;
@@ -386,16 +389,16 @@ void handle_server_read(struct server_options * options, struct binary_header_fi
     switch (binaryHeaderField->object)
     {
         case USER:
-            handle_read_user_response(options, body);
+//            TODO: handle_read_user_response(options, body);
             break;
         case CHANNEL:
-            handle_read_channel_response(options, body);
+//            TODO: handle_read_channel_response(options, body);
             break;
         case MESSAGE:
             handle_read_message_response(options, body);
             break;
         case AUTH:
-            handle_read_auth_response(options, body);
+//            TODO: handle_read_auth_response(options, body);
             break;
         default:
             break;

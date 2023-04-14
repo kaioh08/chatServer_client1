@@ -86,11 +86,6 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
     dc_write(env, err, fd, &data, (sizeof(uint32_t) + dc_strlen(env, body)));
 }
 
-void clear_debug_buffer(FILE * debug_log_file)
-{
-    fflush(debug_log_file);
-    setbuf(debug_log_file, NULL);
-}
 
 void send_create_user(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);

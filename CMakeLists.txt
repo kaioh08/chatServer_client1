@@ -25,6 +25,8 @@ set(CLIENT_SOURCE_MAIN
         ${SOURCE_DIR}/handling-response.c
         )
 set(CLIENT_HEADER_LIST
+        ${INCLUDE_DIR}/processor_utility.h
+        ${INCLUDE_DIR}/handling-response.h
         )
 set(CLIENT_REQUIRED_LIBRARIES_LIST
         Curses
