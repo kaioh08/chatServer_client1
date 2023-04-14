@@ -40,6 +40,7 @@ struct request{
 struct server_options{
     struct dc_env *env;
     struct dc_error *err;
+
     FILE * debug_log_file;
 
     int socket_fd;

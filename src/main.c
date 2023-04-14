@@ -481,14 +481,14 @@ long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
         exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
     }
 
-    struct binary_header * binaryHeaderField = deserialize_header(header);
-
-    printf("RECEIVED FROM SERVER");
-    // print deserialized header
-    fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
-    fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
-    fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
-    fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
+//    struct binary_header * binaryHeaderField = deserialize_header(header);
+//
+//    printf("RECEIVED FROM SERVER");
+//    // print deserialized header
+//    fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
+//    fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
+//    fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
+//    fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
 
     // Read body and clear buffer
     read(socket_fd, &body, MAX_SIZE);
