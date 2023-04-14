@@ -492,7 +492,8 @@ void clean_up(void)
     wrefresh(input_win);
 }
 
-void* input_handler(void* arg) {
+void* input_handler(void* arg)
+{
     int ch;
     struct dc_env *env;
     struct dc_error *err;
@@ -512,26 +513,31 @@ void* input_handler(void* arg) {
     char ETX[3] = "\x03";
     dc_memset(env, input_buffer, 0, sizeof(input_buffer));
     draw_menu(menu_win, menu_highlight, MENU_ITEMS);
-    current_chat = dc_malloc(env, err,sizeof(char) * 20);
-    while (!quit) {
+    current_chat = dc_malloc(env, err, sizeof(char) * 20);
+    while (!quit)
+    {
         ch = getch();
 
         pthread_mutex_lock(&mutex);
 
-        if (menu_focused && menu_active) {
+        if (menu_focused && menu_active)
+        {
             // clear input window
             werase(input_win);
             box(input_win, 0, 0);
             wrefresh(input_win);
 
-            switch (ch) {
+            switch (ch)
+            {
                 case KEY_UP:
-                    if (menu_highlight > 0) {
+                    if (menu_highlight > 0)
+                    {
                         menu_highlight--;
                     }
                     break;
                 case KEY_DOWN:
-                    if (menu_highlight < MENU_ITEMS - 1) {
+                    if (menu_highlight < MENU_ITEMS - 1)
+                    {
                         menu_highlight++;
                     }
                     break;
@@ -548,34 +554,63 @@ void* input_handler(void* arg) {
             }
 
             draw_menu(menu_win, menu_highlight, MENU_ITEMS);
-        } else {
+        } else
+        {
             // Enter message
             mvwprintw(input_win, 1, 1, "Enter message: ");
             wrefresh(input_win);
 
-            switch (ch) {
+            switch (ch)
+            {
                 case KEY_ENTER:
                 case '\n':
                 case '\r':
-                    snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
-                             display_name, ETX, current_chat, ETX,
-                             input_buffer, ETX, send_time, ETX);
-                    wprintw(input_win, "%s", message);
-                    send_create_message(env, err, socket_fd, message);
-                    wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));
-                    werase(input_win);
-                    box(input_win, 0, 0);
-                    wrefresh(input_win);
-                    input_idx = 0;
-                    dc_memset(env, input_buffer, 0, sizeof(input_buffer));
-                    mvwprintw(input_win, 1, 1, "Enter message: ");
-                    wrefresh(input_win);
-                    refresh();
+                    // if starts with /, it's a command and not a message
+                    if (input_buffer[0] == '/')
+                    {
+                        char *command_buffer = dc_malloc(env, err, sizeof(char) * dc_strlen(env, input_buffer));
+                        dc_strcpy(env, command_buffer, input_buffer);
+                        // read until space to get command and save in command_buffer
+                        char *command = dc_strtok(env, command_buffer, " ");
+                        if (dc_strcmp(env, command, "/invite") == 0)
+                        {
+                            // get channel name and username
+                            char *channel_name = dc_strtok(env, NULL, " ");
+                            char *username = dc_strtok(env, NULL, " ");
+                            if (channel_name != NULL && username != NULL)
+                            {
+                                // construct body in the required format
+                                char *body = dc_malloc(env, err, sizeof(char) * (dc_strlen(env, channel_name) +
+                                                                                 dc_strlen(env, username) + 5));
+                                snprintf(body, sizeof(body), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", channel_name, ETX, "0", ETX, "0", ETX,"1", ETX, "1", ETX, username, ETX, "0", ETX, "0", ETX);
+                                // pass body to the function that sends the invitation to the server
+                                send_update_channel(env, err, socket_fd, body);
+                            }
+                        }
+                    } else
+                    {
+                        snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
+                                 display_name, ETX, current_chat, ETX,
+                                 input_buffer, ETX, send_time, ETX);
+                        wprintw(input_win, "%s", message);
+                        send_create_message(env, err, socket_fd, message);
+                        wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));
+                        werase(input_win);
+                        box(input_win, 0, 0);
+                        wrefresh(input_win);
+                        input_idx = 0;
+                        dc_memset(env, input_buffer, 0, sizeof(input_buffer));
+                        mvwprintw(input_win, 1, 1, "Enter message: ");
+                        wrefresh(input_win);
+                        refresh();
+                    }
                     break;
+
                 case KEY_BACKSPACE:
                 case KEY_DC:
                 case 127: // Backspace key
-                    if (input_idx > 0) {
+                    if (input_idx > 0)
+                    {
                         input_idx--;
                         input_buffer[input_idx] = '\0';
                         werase(input_win);
@@ -584,19 +619,26 @@ void* input_handler(void* arg) {
                         wrefresh(input_win);
                     }
                     break;
+
                 case '\t': // Press 'Tab' to switch focus between input and menu
                     menu_focused = !menu_focused;
                     break;
+
                 case KEY_UP:
                     break;
+
                 case KEY_DOWN:
                     break;
+
                 case KEY_LEFT:
                     break;
+
                 case KEY_RIGHT:
                     break;
+
                 default:
-                    if (input_idx < COLS - 3) {
+                    if (input_idx < COLS - 3)
+                    {
                         input_buffer[input_idx] = ch;
                         input_idx++;
                         mvwprintw(input_win, 1, 16, "%s", input_buffer);
@@ -608,8 +650,7 @@ void* input_handler(void* arg) {
 
         pthread_mutex_unlock(&mutex);
 
-        // Sleep to prevent high CPU usage
-        usleep(10000);
     }
+
     return NULL;
 }

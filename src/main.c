@@ -15,17 +15,8 @@
 #include <pthread.h>
 
 #define SERVER_PORT 5432
-//#define MAX_SIZE 1024
-//#define INPUT_HEIGHT 3
-//#define MENU_WIDTH 30
-//#define MAX_NAME_LENGTH 20
-//#define MAX_PASSWORD_LENGTH 20
-//#define MENU_ITEMS 5
-//#define MAX_SIZE 1024
 
 pthread_mutex_t mutex;
-// Thread functions
-//WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 void* message_handler(void* arg);
 
 
