@@ -39,10 +39,6 @@ struct arg {
 
 typedef void (*message_handler)(void *arg);
 
-struct binary_header * deserialize_header(uint32_t value);
-void display_header(struct binary_header * header, const char * data);
-void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header * header, int fd, const char * body);
-
 void *read_message_handler(void *arg);
 void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct binary_header_field *b_header, char *body);
 

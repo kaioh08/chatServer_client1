@@ -60,7 +60,7 @@ void *read_message_handler(void *arg)
             {
                 perror("read failed at reading binary header\n");
             }
-            b_header = deserialize_header(unprocessed_binary_header);
+            b_header = deserialize_header(env, err, fd, unprocessed_binary_header);
             //read the dispatch after getting the binary header
             char *body;
             body = dc_malloc(env, err, b_header->body_size);
@@ -216,14 +216,15 @@ struct login_info {
     char ** channel_names;
 };
 
-// to save the username and channel_size and channel_name after you login
+// to save the username and channel_size and channel_name after you login.
 static void save_username(struct dc_env *env, struct dc_error *err, struct login_info * login, const char * username) {
-    login->username = dc_strncpy(env, err, username);
+    login->username = dc_strcpy(env, (char *) err, username);
+    //const struct dc_env *env, char *restrict s1, const char *restrict s2, size_t n
 }
 
 // add more channels after last channel names (assuming the channel name cannot be duplicated)
 static void add_channel(struct dc_env *env, struct dc_error *err, struct login_info * login, const char * channel_name) {
-    login->channel_names[login->channel_size] = dc_strncpy(env, err, channel_name);
+    login->channel_names[login->channel_size] = dc_strcpy(env, (char *) err, channel_name);
     login->channel_size++;
 }
 
