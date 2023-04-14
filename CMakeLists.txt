@@ -39,8 +39,10 @@ set(CLIENT_SOURCE_LIST
 set(CLIENT_SOURCE_MAIN
         ${SOURCE_DIR}/main.c
         ${SOURCE_DIR}/main-client.c
+        ${SOURCE_DIR}/gui.c
         )
 set(CLIENT_HEADER_LIST
+        ${INCLUDE_DIR}/gui.h
         )
 set(CLIENT_REQUIRED_LIBRARIES_LIST
         Curses
