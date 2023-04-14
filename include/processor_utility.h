@@ -70,9 +70,6 @@ struct server_options{
 
 typedef void (*message_handler)(void *arg);
 
-void *read_message_handler(void *arg);
-void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct server_options *options, struct binary_header_field *b_header, char *body);
-
 struct binary_header_field * deserialize_header(struct dc_env *env, struct dc_error *err, int fd, uint32_t value);
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
                       const char * body);

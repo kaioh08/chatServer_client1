@@ -3,6 +3,9 @@
 
 #include "processor_utility.h"
 
+void *read_message_handler(void *arg);
+void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct server_options *options, struct binary_header_field *b_header, char *body);
+
 void handle_server_request(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
 void handle_server_ping_user(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
 void handle_server_ping_channel(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
