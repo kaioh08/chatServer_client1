@@ -52,7 +52,7 @@ void *read_message_handler(void *arg)
         else
         {
             //when fd has stuff, read the first few bytes to get the header fields
-            struct binary_header *b_header;
+            struct binary_header_field *b_header;
             uint32_t unprocessed_binary_header;
             ssize_t nread;
             nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint32_t));
@@ -75,7 +75,7 @@ void *read_message_handler(void *arg)
     }
 }
 
-void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct binary_header *b_header, char *body)
+void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct binary_header_field *b_header, char *body)
 {
     switch(b_header->type)
     {
