@@ -42,9 +42,6 @@ typedef void (*message_handler)(void *arg);
 void *read_message_handler(void *arg);
 void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct binary_header_field *b_header, char *body);
 
-/**
- * Create
- */
 struct request{
     char * type;
     char * obj;
