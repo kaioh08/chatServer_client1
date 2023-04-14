@@ -17,28 +17,12 @@ set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 set(TESTS_DIR ${PROJECT_SOURCE_DIR}/tests)
 set(NCURSES_DIR ${PROJECT_SOURCE_DIR}/ncurses)
 
-set(PROCESS_SERVER_SOURCE_LIST
-        )
-set(PROCESS_SERVER_SOURCE_MAIN
-        ${SOURCE_DIR}/main-process-server.c
-        )
-set(PROCESS_SERVER_HEADER_LIST
-        ${INCLUDE_DIR}/processor.h
-        )
-set(PROCESS_SERVER_REQUIRED_LIBRARIES_LIST
-        dc_error
-        dc_env
-        dc_c
-        dc_posix
-        dc_posix_xsi
-        dc_unix
-        dc_util
-        )
 set(CLIENT_SOURCE_LIST
         )
 set(CLIENT_SOURCE_MAIN
         ${SOURCE_DIR}/main.c
         ${SOURCE_DIR}/main-client.c
+        ${SOURCE_DIR}/handling-response.c
         )
 set(CLIENT_HEADER_LIST
         )
@@ -51,9 +35,6 @@ set(CLIENT_REQUIRED_LIBRARIES_LIST
         dc_posix_xsi
         dc_unix
         dc_util
-        )
-set(ECHO_SOURCE_LIST
-        ${SOURCE_DIR}/echo.c
         )
 set(ECHO_HEADER_LIST
         ${INCLUDE_DIR}/processor.h
