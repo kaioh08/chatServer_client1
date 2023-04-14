@@ -22,6 +22,7 @@ char *current_chat;
 
 pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
+
 void draw_menu(WINDOW *win, int highlight, int number_of_items)
 {
     const char *choices[] = {
@@ -308,4 +309,170 @@ long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
 
 
     return response;
+}
+
+void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd)
+{
+    int x, y, username_x, username_y, password_x, password_y, displayname_x, displayname_y, username_len, password_len, displayname_len;
+    char username_register[20], displayname[20], password[20];
+    char ETX[3] = "\x03";
+    char *buffer = malloc(sizeof(char) * MAX_SIZE);
+    dc_memset(env, buffer, 0, sizeof(char) * MAX_SIZE);
+    register_win = newwin(12, 40, (LINES - 12) / 2, (COLS - 40) / 2);
+    clear();
+
+    getmaxyx(stdscr, y, x);
+
+    username_len = dc_strlen(env, "Username: ");
+    username_x = x / 2 - username_len;
+    username_y = y / 2 - 1;
+    password_len = dc_strlen(env, "Password: ");
+    password_x = x / 2 - password_len;
+    password_y = username_y + 2;
+    displayname_len = dc_strlen(env, "Display Name: ");
+    displayname_x = x / 2 - displayname_len;
+    displayname_y = password_y + 2;
+
+    mvprintw(username_y - 2, x / 2 - 10, "Please enter your registration details:");
+    mvprintw(username_y, username_x, "Username: ");
+
+
+    mvprintw(displayname_y, displayname_x, "Display Name: ");
+
+    mvprintw(password_y, password_x, "Password: ");
+
+
+
+
+    mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
+    mvprintw(displayname_y + 2, x / 2, "  Cancel  ");
+
+    echo();
+    move(username_y, username_x + username_len);
+    refresh();
+    getstr(username_register);
+
+    move(password_y, password_x + password_len);
+    refresh();
+    echo();
+    getstr(password);
+
+    move(displayname_y, displayname_x + displayname_len);
+    refresh();
+    echo();
+    getstr(displayname);
+
+    if(dc_strlen(env,username_register) > 20)
+    {
+        mvprintw(displayname_y + 6, x / 2 - 15, "Error: display_name too long");
+        quit();
+    }
+    if(dc_strlen(env, password) < 6)
+    {
+        mvprintw(displayname_y + 6, x / 2 - 15, "Error: password too short");
+//        quit();
+    }
+
+    dc_strcat(env, buffer, username_register);
+    dc_strcat(env, buffer, ETX);
+    dc_strcat(env, buffer, displayname);
+    dc_strcat(env, buffer, ETX);
+    dc_strcat(env, buffer, password);
+    dc_strcat(env, buffer, ETX);
+
+    buffer[dc_strlen(env, buffer)] = '\0';
+
+
+    // highlight register button
+    attron(A_REVERSE);
+    mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
+    attroff(A_REVERSE);
+
+    int focus = 0;
+    bool done = false;
+
+
+    while (!done)
+    {
+        refresh();
+        int ch = getch();
+
+        switch (ch)
+        {
+            case KEY_DOWN:
+                if (focus == 0)
+                {
+                    focus = 1;
+                    // highlight cancel button
+                    attron(A_REVERSE);
+                    mvprintw(displayname_y + 2, x / 2, "  Cancel  ");
+                    attroff(A_REVERSE);
+                    // unhighlight register button
+                    mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
+                }
+                break;
+            case KEY_UP:
+                if (focus == 1)
+                {
+                    focus = 0;
+                    // highlight register
+                    attron(A_REVERSE);
+                    mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
+                    attroff(A_REVERSE);
+                    // unhighlight cancel button
+                    mvprintw(displayname_y + 2, x / 2, "  Cancel  ");
+                    int newCh;
+                    if(newCh == '\n')
+                    {
+                        send_create_user(env, err, socket_fd, buffer);
+                        done = true;
+                    }
+                }
+                break;
+            case '\n':
+                if (dc_strlen(env, buffer) < MAX_SIZE)
+                {
+//                    init_windows();
+                    send_create_user(env, err, socket_fd, buffer);
+                    long response = get_response_code(env, err, socket_fd);
+                    if(response != 201)
+                    {
+                        mvprintw(displayname_y + 6, x / 2 - 15, "Error: display_name already exists");
+                        wrefresh(register_win);
+                        sleep(2);
+                        draw_register_window(env, err, socket_fd);
+                        refresh();
+                    }
+                    else
+                    {
+                        mvprintw(displayname_y + 6, x / 2 - 15, "Registration successful");
+                        wrefresh(register_win);
+                        sleep(1);
+                        draw_login_win(env, err, socket_fd);
+                        refresh();
+                        done=true;
+                    }
+//                    done = true;
+                } else
+                {
+                    // handle buffer overflow
+                    mvprintw(y - 2, x / 2 - 15, "Error: buffer overflow");
+                }
+                break;
+            default:
+                // handle other key presses
+                break;
+        }
+        // consume newline character
+        if (ch != KEY_DOWN && ch != KEY_UP)
+        {
+            getch();
+        }
+    }
+
+    free(buffer);
+    noecho();
+    clear();
+    refresh();
+    delwin(register_win);
 }
