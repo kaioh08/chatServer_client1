@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include "processor_utility.h"
+#include "menu_functions.h"
 
 
 #define MAX_SIZE 1024
@@ -19,7 +20,9 @@
 #define MENU_ITEMS 5
 char *display_name;
 char *current_chat;
-
+bool menu_focused = false;
+int menu_highlight = 0;
+bool menu_active = true;
 pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 
@@ -475,4 +478,137 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
     clear();
     refresh();
     delwin(register_win);
+}
+
+void clean_up(void)
+{
+    touchwin(menu_win);
+    wrefresh(menu_win);
+    touchwin(chat_win);
+    wrefresh(chat_win);
+    touchwin(input_win);
+    wrefresh(input_win);
+}
+
+void* input_handler(void* arg) {
+    int ch;
+    struct dc_env *env;
+    struct dc_error *err;
+    int socket_fd;
+
+    struct arg *args = (struct arg *) arg;
+    env = args->env;
+    err = args->error;
+    socket_fd = args->socket_fd;
+
+    bool quit = false;
+    int input_idx = 0;
+    char input_buffer[COLS - 2];
+    time_t time_send = time(NULL);
+    uint8_t send_time = time_send;
+    char message[1024];
+    char channel_name[30] = "comp4981 channel";
+    char ETX[3] = "\x03";
+    dc_memset(env, input_buffer, 0, sizeof(input_buffer));
+    draw_menu(menu_win, menu_highlight, MENU_ITEMS);
+
+    while (!quit) {
+        ch = getch();
+
+        pthread_mutex_lock(&mutex);
+
+        if (menu_focused && menu_active) {
+            // clear input window
+            werase(input_win);
+            box(input_win, 0, 0);
+            wrefresh(input_win);
+
+            switch (ch) {
+                case KEY_UP:
+                    if (menu_highlight > 0) {
+                        menu_highlight--;
+                    }
+                    break;
+                case KEY_DOWN:
+                    if (menu_highlight < MENU_ITEMS - 1) {
+                        menu_highlight++;
+                    }
+                    break;
+                case KEY_ENTER:
+                case '\n':
+                case '\r':
+                    handle_menu_selection(env, err, socket_fd, menu_highlight);
+                    break;
+                case '\t': // Press 'Tab' to switch focus between input and menu
+                    menu_focused = !menu_focused;
+                    break;
+                default:
+                    break;
+            }
+
+            draw_menu(menu_win, menu_highlight, MENU_ITEMS);
+        } else {
+            // Enter message
+            mvwprintw(input_win, 1, 1, "Enter message: ");
+            wrefresh(input_win);
+
+            switch (ch) {
+                case KEY_ENTER:
+                case '\n':
+                case '\r':
+                    snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
+                             display_name, ETX, current_chat, ETX,
+                             input_buffer, ETX, send_time, ETX);
+                    wprintw(input_win, "%s", message);
+                    send_create_message(env, err, socket_fd, message);
+                    wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));
+                    werase(input_win);
+                    box(input_win, 0, 0);
+                    wrefresh(input_win);
+                    input_idx = 0;
+                    dc_memset(env, input_buffer, 0, sizeof(input_buffer));
+                    mvwprintw(input_win, 1, 1, "Enter message: ");
+                    wrefresh(input_win);
+                    refresh();
+                    break;
+                case KEY_BACKSPACE:
+                case KEY_DC:
+                case 127: // Backspace key
+                    if (input_idx > 0) {
+                        input_idx--;
+                        input_buffer[input_idx] = '\0';
+                        werase(input_win);
+                        box(input_win, 0, 0);
+                        mvwprintw(input_win, 1, 16, "%s", input_buffer);
+                        wrefresh(input_win);
+                    }
+                    break;
+                case '\t': // Press 'Tab' to switch focus between input and menu
+                    menu_focused = !menu_focused;
+                    break;
+                case KEY_UP:
+                    break;
+                case KEY_DOWN:
+                    break;
+                case KEY_LEFT:
+                    break;
+                case KEY_RIGHT:
+                    break;
+                default:
+                    if (input_idx < COLS - 3) {
+                        input_buffer[input_idx] = ch;
+                        input_idx++;
+                        mvwprintw(input_win, 1, 16, "%s", input_buffer);
+                        wrefresh(input_win);
+                    }
+                    break;
+            }
+        }
+
+        pthread_mutex_unlock(&mutex);
+
+        // Sleep to prevent high CPU usage
+        usleep(10000);
+    }
+    return NULL;
 }

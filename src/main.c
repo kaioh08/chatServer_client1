@@ -1,5 +1,4 @@
 #include "../include/processor_utility.h"
-//#include <arpa/inet.h>
 #include "gui.h"
 #include "menu_functions.h"
 #include <dc_c/dc_stdio.h>
@@ -12,12 +11,8 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <ncurses.h>
-#include <string.h>
 #include <ctype.h>
 #include <pthread.h>
-#include <sys/time.h>
-#include <time.h>
-//#include <tclDecls.h>
 
 #define SERVER_PORT 5432
 #define MAX_SIZE 1024
@@ -27,14 +22,10 @@
 #define MAX_PASSWORD_LENGTH 20
 #define MENU_ITEMS 5
 #define MAX_SIZE 1024
-char *display_name;
-char *current_chat;
 
 pthread_mutex_t mutex;
-WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
-
 // Thread functions
-void* input_handler(void *arg);
+//WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 void* message_handler(void* arg);
 
 
@@ -56,7 +47,6 @@ int main(int argc, char *argv[])
     struct dc_env *env1;
     struct dc_error *err1;
     int socket_fd1;
-//    void *arg;
 
     err1 = dc_error_create(false);
     env1 = dc_env_create(err1, true, NULL);
