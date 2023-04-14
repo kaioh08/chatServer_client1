@@ -28,6 +28,7 @@ WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 
 void draw_menu(WINDOW *win, int highlight, int number_of_items)
 {
+    //TODO: change quit to logout
     const char *choices[] = {
             "Create new chat",
             "Show list of active chats",
@@ -255,6 +256,7 @@ void init_input(void) {
     refresh();
 }
 
+//TODO: change to handle logout
 void quit(void)
 {
     endwin();
