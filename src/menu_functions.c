@@ -190,7 +190,7 @@ void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd, c
     wgetnstr(update_win, new_name, MAX_NAME_LENGTH);
     noecho();
     curs_set(0);
-    char ETX[3] = "\x03"
+    char ETX[3] = "\x03";
 
     // create "Save" and "Cancel" buttons
     mvwprintw(update_win, 4, 20, "[ Save ]");
@@ -298,7 +298,7 @@ void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_
             show_active_users(env, err, socket_fd);
             break;
         case 3: // Settings
-            display_settings(env, err, socket_fd);
+            display_settings(env, err, socket_fd, display_name);
             break;
         case 4:
             quit();
