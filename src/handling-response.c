@@ -5,6 +5,7 @@
 #include <dlfcn.h>
 #include <dc_util/system.h>
 #include <dc_util/types.h>
+#include <pthread.h>
 
 #define BASE 10
 
@@ -19,66 +20,57 @@ void *read_message_handler(void *arg)
     struct dc_env *env;
     struct dc_error *err;
     int fd;
+    char *response_buffer;
+    struct binary_header_field *b_header;
     FILE *file;
-
-    struct server_options *args = (struct server_options *) arg;
+    struct read_handler_args *args = (struct read_handler_args *) arg;
     env = args->env;
     err = args->err;
     fd = args->socket_fd;
-    file = args->debug_log_file;
-
+    response_buffer = args->response_buffer;
+    b_header = args->b_header;
     DC_TRACE(env);
 
-    struct pollfd fds[1];
-    int timeout;
-    int ret;
+    ssize_t nread;
 
-    memset(fds, 0, sizeof(fds));
-    timeout = 100;
-    fds[0].fd = fd;
-    fds[0].events = POLLIN;
     while(true)
     {
         fprintf(file, "Anything new?\n");
         clear_debug_file_buffer(file);
-        ret = poll(fds, 1, timeout);
-        if (ret < 0) {
-            perror("poll failed\n");
+        uint32_t unprocessed_binary_header;
+        while(response_buffer_updated == 1);
+        pthread_mutex_lock(&socket_mutex);
+        nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint8_t)); //depending on how deserialize_header() works, the nbytes might have to change
+        if (nread < 0) {
+            fprintf(file, "Read failed\n");
+            clear_debug_file_buffer(file);
         }
-        else if (ret == 0)
-        {
-//            fprintf(file, "Didn't read anything in time\n");
-            continue;
-        }
-        else
+        else if (nread == sizeof(uint8_t))
         {
             fprintf(file, "got sth\n");
             clear_debug_file_buffer(file);
             //when fd has stuff, read the first few bytes to get the header fields
-            struct binary_header_field *b_header;
-            uint32_t unprocessed_binary_header;
-            ssize_t nread;
-            nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint32_t));
-            if(nread != sizeof(uint32_t))
-            {
-                perror("read failed at reading binary header\n");
-            }
-            b_header = deserialize_header(env, err, fd, unprocessed_binary_header);
+            pthread_mutex_lock(&response_buffer_mutex);
+            deserialize_header(env, err, fd, b_header, unprocessed_binary_header);
             //read the dispatch after getting the binary header
-            char *body;
-            body = dc_malloc(env, err, b_header->body_size);
-            nread = dc_read(env, err, fd, body, b_header->body_size);
+            nread = dc_read(env, err, fd, response_buffer, b_header->body_size);
             if(nread != b_header->body_size)
             {
-                perror("read failed at reading body\n");
+                fprintf(file, "read failed at reading body\n");
+                clear_debug_file_buffer(file);
             }
+            pthread_mutex_unlock(&socket_mutex);
+            fprintf(file, "Received response:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
+                    b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
+            clear_debug_file_buffer(file);
+            response_buffer_updated = 1;
+            pthread_mutex_unlock(&response_buffer_mutex);
             //parse through the dispatch, call the right response handler
-            response_handler_wrapper(env, err, args, b_header, body);
         }
     }
 }
 
-void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct server_options *options, struct binary_header_field *b_header, char *body)
+void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct arg *options, struct binary_header_field *b_header, char *body)
 {
     switch(b_header->type)
     {
@@ -109,7 +101,7 @@ void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct s
     }
 }
 
-void handle_server_request(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+void handle_server_request(struct arg * options, struct binary_header_field * binaryHeaderField, char * body) {
     switch (binaryHeaderField->type)
     {
         case CREATE:
@@ -137,7 +129,7 @@ void handle_server_request(struct server_options * options, struct binary_header
  * Handle CREATE STUFF
  */
 
-void handle_create_user_response(struct server_options *options, char *body)
+void handle_create_user_response(struct arg *options, char *body)
 {
     // 400 409 201
 
@@ -165,7 +157,7 @@ void handle_create_user_response(struct server_options *options, char *body)
     }
 }
 
-void handle_create_auth_response(struct server_options *options, char *body)
+void handle_create_auth_response(struct arg *options, char *body)
 {
     // 400 403 200
     fprintf(options->debug_log_file, "HANDLING CREATE USER AUTH RESP\n");
@@ -219,7 +211,7 @@ void handle_create_auth_response(struct server_options *options, char *body)
     }
 }
 
-void handle_create_channel_response(struct server_options *options, char *body)
+void handle_create_channel_response(struct arg *options, char *body)
 {
     // 400 404 403 409 201
     fprintf(options->debug_log_file, "HANDLING CREATE CHANNEL RESP\n");
@@ -260,7 +252,7 @@ void handle_create_channel_response(struct server_options *options, char *body)
 
 }
 
-void handle_create_message_response(struct server_options *options, char *body)
+void handle_create_message_response(struct arg *options, char *body)
 {
     // 400 404 403 201
 
@@ -311,7 +303,7 @@ void handle_create_message_response(struct server_options *options, char *body)
     }
 }
 
-void handle_server_create(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+void handle_server_create(struct arg * options, struct binary_header_field * binaryHeaderField, char * body) {
     switch (binaryHeaderField->object)
     {
         case USER:
@@ -336,7 +328,7 @@ void handle_server_create(struct server_options * options, struct binary_header_
  */
 
 
-void handle_read_message_response(struct server_options *options, char *body) {
+void handle_read_message_response(struct arg *options, char *body) {
     fprintf(options->debug_log_file, "HANDLING READ MESSAGE RESPONSE\n");
     clear_debug_file_buffer(options->debug_log_file);
 
@@ -362,7 +354,7 @@ void handle_read_message_response(struct server_options *options, char *body) {
         fprintf(options->debug_log_file, "Message NUMBER: %s\n", message_size);
         clear_debug_file_buffer(options->debug_log_file);
 
-        uint16_t channel_size = dc_uint16_from_str(options->env, options->err, message_size, BASE);
+        uint16_t channel_size = dc_uint16_from_str(options->env, options->error, message_size, BASE);
         dc_strcpy(options->env, buffer, "OK ");
 
         for (int i = 0; i < channel_size; i++)
@@ -388,7 +380,7 @@ void handle_read_message_response(struct server_options *options, char *body) {
 }
 
 
-void handle_server_read(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+void handle_server_read(struct arg * options, struct binary_header_field * binaryHeaderField, char * body) {
     switch (binaryHeaderField->object)
     {
         case USER:

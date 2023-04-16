@@ -51,6 +51,9 @@ struct arg {
     struct dc_env *env;
     struct dc_error *error;
     int socket_fd;
+    FILE * debug_log_file;
+    char *response_buffer;
+    struct binary_header_field *b_header;
 };
 
 struct request{
@@ -59,21 +62,20 @@ struct request{
     char * data;
 };
 
-struct server_options{
+struct read_handler_args{
     struct dc_env *env;
     struct dc_error *err;
-
-    FILE * debug_log_file;
-
+    char *response_buffer;
+    struct binary_header_field *b_header;
     int socket_fd;
 };
 
 typedef void (*message_handler)(void *arg);
 
 void *read_message_handler(void *arg);
-void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct server_options *options, struct binary_header_field *b_header, char *body);
+void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct arg *options, struct binary_header_field *b_header, char *body);
 
-struct binary_header_field * deserialize_header(struct dc_env *env, struct dc_error *err, int fd, uint32_t value);
+void deserialize_header(struct dc_env *env, struct dc_error *err, int fd, struct binary_header_field *b_header, uint32_t value);
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
                       const char * body);
 void send_create_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);

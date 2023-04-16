@@ -2,27 +2,28 @@
 #define PROCESS_SERVER_HANDLING_RESPONSE_H
 
 #include "processor_utility.h"
+#include "global_vars.h"
 
 void clear_debug_file_buffer(FILE * debug_log_file);
 
-void handle_server_request(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_ping_user(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_ping_channel(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
+void handle_server_request(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
+void handle_server_ping_user(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
+void handle_server_ping_channel(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
 
-void handle_server_create(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_read(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_update(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
-void handle_server_delete(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
+void handle_server_create(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
+void handle_server_read(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
+void handle_server_update(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
+void handle_server_delete(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
 
-void handle_create_user_response(struct server_options *options, char *body);
-void handle_create_channel_response(struct server_options *options, char *body);
-void handle_create_message_response(struct server_options *options, char *body);
-void handle_create_auth_response(struct server_options *options, char *body);
+void handle_create_user_response(struct arg *options, char *body);
+void handle_create_channel_response(struct arg *options, char *body);
+void handle_create_message_response(struct arg *options, char *body);
+void handle_create_auth_response(struct arg *options, char *body);
 
-void handle_read_user_response(struct server_options *options, char *body);
-void handle_read_channel_response(struct server_options *options, char *body);
-void handle_read_message_response(struct server_options *options, char *body);
-void handle_read_auth_response(struct server_options *options, char *body);
+void handle_read_user_response(struct arg *options, char *body);
+void handle_read_channel_response(struct arg *options, char *body);
+void handle_read_message_response(struct arg *options, char *body);
+void handle_read_auth_response(struct arg *options, char *body);
 
 
 #endif //PROCESS_SERVER_HANDLING_RESPONSE_H

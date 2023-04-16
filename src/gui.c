@@ -175,23 +175,23 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                 if (dc_strlen(env, buffer) < MAX_SIZE)
                 {
                     send_create_auth(env, err, socket_fd, buffer);
-                    response = get_response_code(env, err, socket_fd);
-                    if (response != 200)
-                    {
-                        mvprintw(y - 2, x / 2 - 15, "Error: invalid credentials");
-                        wrefresh(login_win);
-                        sleep(3);
-                        draw_login_win(env, err, socket_fd);
-                        done = true;
-                    } else {
-                        mvprintw(y - 2, x / 2 - 15, "Success: logged in");
-                        wrefresh(login_win);
-//                        display_name = malloc(sizeof(char) * strlen(username_login) + 1);
-//                        strcpy(display_name, username_login);
-                        init_windows(MENU_ITEMS);
-                        refresh();
-                        done = true;
-                    }
+//                    response = get_response_code(env, err, socket_fd);
+//                    if (response != 200)
+//                    {
+//                        mvprintw(y - 2, x / 2 - 15, "Error: invalid credentials");
+//                        wrefresh(login_win);
+//                        sleep(3);
+//                        draw_login_win(env, err, socket_fd);
+//                        done = true;
+//                    } else {
+//                        mvprintw(y - 2, x / 2 - 15, "Success: logged in");
+//                        wrefresh(login_win);
+////                        display_name = malloc(sizeof(char) * strlen(username_login) + 1);
+////                        strcpy(display_name, username_login);
+//                        init_windows(MENU_ITEMS);
+//                        refresh();
+//                        done = true;
+//                    }
 //                    draw_register_window(env, err, socket_fd);
 //                    done = true;
                 } else
@@ -263,58 +263,58 @@ void quit(void)
     exit(0);
 }
 
-long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
-{
-    uint32_t header;
-    char body[MAX_SIZE];
-    long response;
-    ssize_t n;
-
-    // receive header from server
-    n = read(socket_fd, &header, sizeof(header));
-    if (n < 0) {
-        perror("error");
-        exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
-    }
-
-    struct binary_header * binaryHeaderField = deserialize_header(header);
-
-    printf("RECEIVED FROM SERVER");
-    // print deserialized header
-//    fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
-//    fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
-//    fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
-//    fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
-
-    // Read body and clear buffer
-    read(socket_fd, &body, MAX_SIZE);
-
-    // Response is 200\0x3name\0x3
-    // get it the name and response code from the body
-    char *response_code = dc_strtok(env,body, "\x3");
-    char *name = dc_strtok(env, NULL, "\x3");
-
-    // assign name to global variable that is not malloced yet
-    display_name = dc_malloc(env, err, dc_strlen(env, name) + 1);
-    dc_strcpy(env, display_name, name);
-
-
-    // convert response code to long
-    response = strtol(response_code, NULL, 10);
-
-    // print response code
-    fprintf(stderr, "Response Code: %ld\n", response);
-
-    // print name
-    fprintf(stderr, "Name: %s\n", name);
-
-    // free memory
-    free(binaryHeaderField);
-    dc_memset(env, body, 0, MAX_SIZE);
-
-
-    return response;
-}
+//long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
+//{
+//    uint32_t header;
+//    char body[MAX_SIZE];
+//    long response;
+//    ssize_t n;
+//
+//    // receive header from server
+//    n = read(socket_fd, &header, sizeof(header));
+//    if (n < 0) {
+//        perror("error");
+//        exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
+//    }
+//
+//    struct binary_header * binaryHeaderField = deserialize_header(header);
+//
+//    printf("RECEIVED FROM SERVER");
+//    // print deserialized header
+////    fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
+////    fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
+////    fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
+////    fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
+//
+//    // Read body and clear buffer
+//    read(socket_fd, &body, MAX_SIZE);
+//
+//    // Response is 200\0x3name\0x3
+//    // get it the name and response code from the body
+//    char *response_code = dc_strtok(env,body, "\x3");
+//    char *name = dc_strtok(env, NULL, "\x3");
+//
+//    // assign name to global variable that is not malloced yet
+//    display_name = dc_malloc(env, err, dc_strlen(env, name) + 1);
+//    dc_strcpy(env, display_name, name);
+//
+//
+//    // convert response code to long
+//    response = strtol(response_code, NULL, 10);
+//
+//    // print response code
+//    fprintf(stderr, "Response Code: %ld\n", response);
+//
+//    // print name
+//    fprintf(stderr, "Name: %s\n", name);
+//
+//    // free memory
+//    free(binaryHeaderField);
+//    dc_memset(env, body, 0, MAX_SIZE);
+//
+//
+//    return response;
+//}
 
 void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
@@ -439,24 +439,24 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
                 {
 //                    init_windows();
                     send_create_user(env, err, socket_fd, buffer);
-                    long response = get_response_code(env, err, socket_fd);
-                    if(response != 201)
-                    {
-                        mvprintw(displayname_y + 6, x / 2 - 15, "Error: display_name already exists");
-                        wrefresh(register_win);
-                        sleep(2);
-                        draw_register_window(env, err, socket_fd);
-                        refresh();
-                    }
-                    else
-                    {
-                        mvprintw(displayname_y + 6, x / 2 - 15, "Registration successful");
-                        wrefresh(register_win);
-                        sleep(1);
-                        draw_login_win(env, err, socket_fd);
-                        refresh();
-                        done=true;
-                    }
+//                    long response = get_response_code(env, err, socket_fd);
+//                    if(response != 201)
+//                    {
+//                        mvprintw(displayname_y + 6, x / 2 - 15, "Error: display_name already exists");
+//                        wrefresh(register_win);
+//                        sleep(2);
+//                        draw_register_window(env, err, socket_fd);
+//                        refresh();
+//                    }
+//                    else
+//                    {
+//                        mvprintw(displayname_y + 6, x / 2 - 15, "Registration successful");
+//                        wrefresh(register_win);
+//                        sleep(1);
+//                        draw_login_win(env, err, socket_fd);
+//                        refresh();
+//                        done=true;
+//                    }
 //                    done = true;
                 } else
                 {
@@ -497,11 +497,17 @@ void* input_handler(void* arg) {
     struct dc_env *env;
     struct dc_error *err;
     int socket_fd;
+    char *response_buffer;
+    struct binary_header_field *b_header;
+    FILE *file;
 
     struct arg *args = (struct arg *) arg;
     env = args->env;
     err = args->error;
     socket_fd = args->socket_fd;
+    response_buffer = args->response_buffer;
+    b_header = args->b_header;
+    file = args->debug_log_file;
 
     bool quit = false;
     int input_idx = 0;
@@ -515,6 +521,18 @@ void* input_handler(void* arg) {
     current_chat = dc_malloc(env, err,sizeof(char) * 20);
     while (!quit) {
         ch = getch();
+
+        if(response_buffer_updated)
+        {
+            pthread_mutex_lock(&response_buffer_mutex);
+            response_handler_wrapper(env, err, args, b_header, response_buffer);
+            fprintf(file, "Input Handler Got Sth:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
+                    b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
+            fflush(file);
+            setbuf(file, NULL);
+            response_buffer_updated = 0;
+            pthread_mutex_unlock(&response_buffer_mutex);
+        }
 
         pthread_mutex_lock(&mutex);
 

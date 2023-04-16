@@ -1,4 +1,5 @@
 #include "../include/processor_utility.h"
+#include "global_vars.h"
 
 // create a struct called login_info and put the username and channel size, channel names in the struct at the
 // moment of login, THEN  if the list of is changed, update the struct
@@ -46,25 +47,22 @@ static void clear_username(struct dc_env *env, struct dc_error *err, struct logi
 }
 
 
-struct binary_header_field * deserialize_header(struct dc_env *env, struct dc_error *err, int fd, uint32_t value) {
-    struct binary_header_field * header;
+void deserialize_header(struct dc_env *env, struct dc_error *err, int fd, struct binary_header_field *b_header, uint32_t value) {
     uint32_t header2;
 
     // Convert to network byte order
     value = ntohl(value);
 
-    header = malloc(sizeof(struct binary_header_field));
-    header->version = (value >> 28) & 0x0F; // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-    header->type = (value >> 24) & 0x0F;    // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    b_header->version = (value >> 28) & 0x0F; // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    b_header->type = (value >> 24) & 0x0F;    // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
     // read the remaining 3 bytes
     dc_read_fully(env, err, fd, &header2, 3);
     // Convert to network byte order
     header2 = ntohl(header2);
-    header->object = (header2 >> 24) & 0xFF;  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-    header->body_size = (header2 >> 8) & 0xFFFF;     // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    b_header->object = (header2 >> 24) & 0xFF;  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    b_header->body_size = (header2 >> 8) & 0xFFFF;     // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
-    return header;
 }
 
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
@@ -83,7 +81,9 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
     // Add the body to the data buffer
     dc_memcpy(env, data + sizeof(uint32_t), body, dc_strlen(env, body));
 
+    pthread_mutex_lock(&socket_mutex);
     dc_write(env, err, fd, &data, (sizeof(uint32_t) + dc_strlen(env, body)));
+    pthread_mutex_unlock(&socket_mutex);
 }
 
 

@@ -8,6 +8,7 @@
 #include <dc_env/env.h>
 #include <dc_error/error.h>
 #include <ncurses.h>
+#include "global_vars.h"
 
 /**
  * Draws login window, takes user input and sends it to server.

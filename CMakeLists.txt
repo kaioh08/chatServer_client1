@@ -23,12 +23,13 @@ set(CLIENT_SOURCE_MAIN
         ${SOURCE_DIR}/main.c
         ${SOURCE_DIR}/main-client.c
         ${SOURCE_DIR}/handling-response.c
+        ${SOURCE_DIR}/menu_functions.c
+        ${SOURCE_DIR}/gui.c
         )
 set(CLIENT_HEADER_LIST
         ${INCLUDE_DIR}/processor_utility.h
         ${INCLUDE_DIR}/handling-response.h
-        ${SOURCE_DIR}/gui.c
-        ${SOURCE_DIR}/menu_functions.c
+        ${INCLUDE_DIR}/global_vars.h
         )
 set(CLIENT_REQUIRED_LIBRARIES_LIST
         Curses

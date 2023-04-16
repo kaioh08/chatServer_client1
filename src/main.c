@@ -13,8 +13,10 @@
 #include <ncurses.h>
 #include <ctype.h>
 #include <pthread.h>
+#include "global_vars.h"
 
 #define SERVER_PORT 5432
+#define BUFFER_SIZE 1024
 //#define MAX_SIZE 1024
 //#define INPUT_HEIGHT 3
 //#define MENU_WIDTH 30
@@ -26,17 +28,6 @@
 pthread_mutex_t mutex;
 // Thread functions
 //WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
-void* message_handler(void* arg);
-
-
-void* message_handler(void* arg) {
-    while (true) {
-        // TODO: Implement message sending and receiving
-        usleep(100000); // Sleep to prevent high CPU usage
-    }
-
-    return NULL;
-}
 
 int main(int argc, char *argv[])
 {
@@ -52,7 +43,13 @@ int main(int argc, char *argv[])
     env1 = dc_env_create(err1, true, NULL);
 
     pthread_mutex_init(&mutex, NULL);
+    pthread_mutex_init(&response_buffer_mutex, NULL);
+    pthread_mutex_init(&socket_mutex, NULL);
     pthread_t input_thread, message_thread;
+    response_buffer_updated = 0;
+    char *response_buffer = dc_malloc(env1, err1, BUFFER_SIZE*sizeof(char));
+    struct binary_header_field *b_header = dc_malloc(env1, err1, sizeof(struct binary_header_field));
+
     curs_set(0);
     start_color();
     init_pair(1, COLOR_WHITE, COLOR_BLUE);
@@ -81,25 +78,29 @@ int main(int argc, char *argv[])
         server_port = SERVER_PORT;
     }
 
-    char buffer2[1024];
-    ssize_t num_read = read(STDIN_FILENO, buffer2, sizeof(buffer2));
-    if (num_read == -1) {
-        perror("read failed");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(stderr, "Child process received: %.*s", (int)num_read, buffer2);
+//    char buffer2[1024];
+//    ssize_t num_read = read(STDIN_FILENO, buffer2, sizeof(buffer2));
+//    if (num_read == -1) {
+//        perror("read failed");
+//        exit(EXIT_FAILURE);
+//    }
+//    fprintf(stderr, "Child process received: %.*s", (int)num_read, buffer2);
 
     socket_fd1 = socket(AF_INET, SOCK_STREAM, 0);
     struct arg arg1;
     arg1.error = err1;
     arg1.env = env1;
     arg1.socket_fd = socket_fd1;
+    arg1.response_buffer = response_buffer;
+    arg1.b_header = b_header;
+    arg1.debug_log_file = dc_fopen(env1, err1, "debug_log.txt", "a");
 
-    struct server_options arg2;
+    struct read_handler_args arg2;
     arg2.err = err1;
     arg2.env = env1;
     arg2.socket_fd = socket_fd1;
-    arg2.debug_log_file = dc_fopen(env1, err1, "debug_log.txt", "a");
+    arg2.response_buffer = response_buffer;
+    arg2.b_header = b_header;
     if (socket_fd1 < 0)
     {
         perror("Failed to create socket");
@@ -133,10 +134,13 @@ int main(int argc, char *argv[])
 
     free(env1);
     free(err1);
+    free(response_buffer);
     pthread_join(input_thread, NULL);
     pthread_join(message_thread, NULL);
 
     pthread_mutex_destroy(&mutex);
+    pthread_mutex_destroy(&response_buffer_mutex);
+    pthread_mutex_destroy(&socket_mutex);
     close(socket_fd1);
 
     return EXIT_SUCCESS;
