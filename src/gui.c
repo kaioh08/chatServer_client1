@@ -492,6 +492,40 @@ void clean_up(void)
     wrefresh(input_win);
 }
 
+void handle_command(struct dc_env *env, struct dc_error *err, char* input_buffer, int socket_fd) {
+    char ETX[3] = "\x03";
+    if (input_buffer[0] == '/') {
+        char* command_buffer = dc_malloc(env, err, sizeof(char) * dc_strlen(env, input_buffer));
+        dc_strcpy(env, command_buffer, input_buffer);
+
+        // read until space to get command and save in command_buffer
+        char* command = dc_strtok(env, command_buffer, " ");
+
+        if (dc_strcmp(env, command, "/invite") == 0 ||
+            dc_strcmp(env, command, "/inviteAdmin") == 0 ||
+            dc_strcmp(env, command, "/banUser") == 0) {
+            // get channel name and username
+            char* channel_name = dc_strtok(env, NULL, " ");
+            char* username = dc_strtok(env, NULL, " ");
+
+            if (channel_name != NULL && username != NULL) {
+                // construct body in the required format
+                char* body = dc_malloc(env, err, sizeof(char) * (dc_strlen(env, channel_name) +
+                                                                 dc_strlen(env, username) + 5));
+                if (dc_strcmp(env, command, "/invite") == 0) {
+                    snprintf(body, sizeof(body), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", channel_name, ETX, "0", ETX, "0", ETX,"1", ETX, "1", ETX, username, ETX, "0", ETX, "0", ETX);
+                } else if (dc_strcmp(env, command, "/inviteAdmin") == 0) {
+                    snprintf(body, sizeof(body), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", channel_name, ETX, "0", ETX, "0", ETX,"1", ETX, "1", ETX, username, ETX, "0", ETX, "1", ETX);
+                } else if (dc_strcmp(env, command, "/banUser") == 0) {
+                    snprintf(body, sizeof(body), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", channel_name, ETX, "0", ETX, "1", ETX,"0", ETX, "1", ETX, username, ETX, "0", ETX, "0", ETX);
+                }
+                // pass body to the function that sends the command to the server
+                send_update_channel(env, err, socket_fd, body);
+            }
+        }
+    }
+}
+
 void* input_handler(void* arg)
 {
     int ch;
@@ -568,25 +602,7 @@ void* input_handler(void* arg)
                     // if starts with /, it's a command and not a message
                     if (input_buffer[0] == '/')
                     {
-                        char *command_buffer = dc_malloc(env, err, sizeof(char) * dc_strlen(env, input_buffer));
-                        dc_strcpy(env, command_buffer, input_buffer);
-                        // read until space to get command and save in command_buffer
-                        char *command = dc_strtok(env, command_buffer, " ");
-                        if (dc_strcmp(env, command, "/invite") == 0)
-                        {
-                            // get channel name and username
-                            char *channel_name = dc_strtok(env, NULL, " ");
-                            char *username = dc_strtok(env, NULL, " ");
-                            if (channel_name != NULL && username != NULL)
-                            {
-                                // construct body in the required format
-                                char *body = dc_malloc(env, err, sizeof(char) * (dc_strlen(env, channel_name) +
-                                                                                 dc_strlen(env, username) + 5));
-                                snprintf(body, sizeof(body), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", channel_name, ETX, "0", ETX, "0", ETX,"1", ETX, "1", ETX, username, ETX, "0", ETX, "0", ETX);
-                                // pass body to the function that sends the invitation to the server
-                                send_update_channel(env, err, socket_fd, body);
-                            }
-                        }
+                        handle_command(env, err, input_buffer, socket_fd);
                     } else
                     {
                         snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",

@@ -91,4 +91,5 @@ void clean_up(void);
 
 void* input_handler(void* arg);
 
+void handle_command(struct dc_env *env, struct dc_error *err, char* input_buffer, int socket_fd);
 #endif //PROCESS_SERVER_GUI_H
