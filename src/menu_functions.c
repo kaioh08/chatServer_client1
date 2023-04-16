@@ -182,12 +182,12 @@ void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd, c
     box(update_win, 0, 0);
 
     // create input field for the new display name
-    char current_name[MAX_NAME_LENGTH + 1] = {0};
+    char new_name[MAX_NAME_LENGTH + 1] = {0};
     mvwprintw(update_win, 2, 2, "New Display Name: ");
     wmove(update_win, 2, 20);
     echo();
     curs_set(1);
-    wgetnstr(update_win, display_name, MAX_NAME_LENGTH);
+    wgetnstr(update_win, new_name, MAX_NAME_LENGTH);
     noecho();
     curs_set(0);
     char ETX[3] = "\x03"
@@ -215,10 +215,10 @@ void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd, c
                 save_clicked = !save_clicked;
                 break;
             case 10: // Enter
-                if (save_clicked && strlen(display_name) > 0) {
+                if (save_clicked && strlen(new_name) > 0) {
                     // send the new display name to the server
                     char request_body[256] = {0};
-                    snprintf(request_body, 256, "%s%s%s%s%s%s%s%s%s%s", current_name, ETX, "1", ETX, display_name, ETX, "0", ETX, "0", ETX);
+                    snprintf(request_body, 256, "%s%s%s%s%s%s%s%s%s%s", display_name, ETX, "1", ETX, new_name, ETX, "0", ETX, "0", ETX);
                     send_update_user(env, err, socket_fd, request_body);
                     sleep(2);
                     quit = true;
