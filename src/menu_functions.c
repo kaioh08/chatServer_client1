@@ -176,13 +176,13 @@ void show_active_users(struct dc_env *env, struct dc_error *err, int socket_fd)
 //    menu_focused = true;
 }
 
-void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd) {
+void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd, char* display_name) {
     // create a new window for the display name update form
     WINDOW *update_win = newwin(10, 60, (LINES - 10) / 2, (COLS - 60) / 2);
     box(update_win, 0, 0);
 
     // create input field for the new display name
-    char display_name[MAX_NAME_LENGTH + 1] = {0};
+    char current_name[MAX_NAME_LENGTH + 1] = {0};
     mvwprintw(update_win, 2, 2, "New Display Name: ");
     wmove(update_win, 2, 20);
     echo();
@@ -190,6 +190,7 @@ void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd) {
     wgetnstr(update_win, display_name, MAX_NAME_LENGTH);
     noecho();
     curs_set(0);
+    char ETX[3] = "\x03"
 
     // create "Save" and "Cancel" buttons
     mvwprintw(update_win, 4, 20, "[ Save ]");
@@ -215,9 +216,10 @@ void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd) {
                 break;
             case 10: // Enter
                 if (save_clicked && strlen(display_name) > 0) {
-                    // call create_update_user to update the user's display name
-//                        create_update_user(env, err, fd, display_name);
-//                    wprintw(chat_win, "Display name updated to %s", display_name);
+                    // send the new display name to the server
+                    char request_body[256] = {0};
+                    snprintf(request_body, 256, "%s%s%s%s%s%s%s%s%s%s", current_name, ETX, "1", ETX, display_name, ETX, "0", ETX, "0", ETX);
+                    send_update_user(env, err, socket_fd, request_body);
                     sleep(2);
                     quit = true;
                 } else {

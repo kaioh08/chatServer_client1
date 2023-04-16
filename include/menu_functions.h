@@ -49,7 +49,7 @@ void show_active_chats(struct dc_env *env, struct dc_error *err, int socket_fd);
  * @param err dc_error
  * @param socket_fd socket file descriptor
  */
-void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd );
+void display_settings(struct dc_env *env, struct dc_error *err, int socket_fd, char* display_name);
 
 /**
  * Handles menu selection, calls appropriate function.
