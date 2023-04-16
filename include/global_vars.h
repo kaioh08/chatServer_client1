@@ -7,7 +7,11 @@
 
 #include <pthread.h>
 
+#define ETX "\3"
+
 int response_buffer_updated;
+char *current_channel;
+char *display_name;
 pthread_mutex_t response_buffer_mutex;
 pthread_mutex_t socket_mutex;
 pthread_mutex_t debug_file_mutex;

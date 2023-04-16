@@ -21,8 +21,6 @@
 bool menu_focused = false;
 int menu_highlight = 0;
 bool menu_active = true;
-char *display_name;
-char *current_chat;
 pthread_mutex_t mutex;
 WINDOW *menu_win, *chat_win, *input_win, *login_win, *register_win;
 
@@ -62,7 +60,6 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FIL
     size_t x, y, login_x, login_y, password_x, password_y;
     size_t login_len, password_len;
     char username_login[20], password[20];
-    char ETX[3] = "\x03";
     char *buffer = dc_malloc(env, err, sizeof(char) * MAX_SIZE);
     dc_memset(env, buffer, 0, sizeof(char) * MAX_SIZE);
     login_win = newwin(10, 40, (LINES - 10) / 2, (COLS - 40) / 2);
@@ -95,8 +92,6 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FIL
     echo();
     getstr(password);
 
-
-
     if(dc_strlen(env, username_login) > 20)
     {
         mvprintw(password_y + 6, x / 2 - 15, "Error: username_login too long");
@@ -115,8 +110,6 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FIL
     dc_strcat(env,buffer, ETX);
     buffer[dc_strlen(env, buffer)] = '\0';
 
-
-
     // highlight login button
     attron(A_REVERSE);
     mvprintw(password_y + 2, x / 2 - 10, "  Login  ");
@@ -126,7 +119,6 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FIL
 
     int focus = 0;
     bool done = false;
-    long response;
     while (!done)
     {
         refresh();
@@ -189,6 +181,7 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FIL
                         wrefresh(login_win);
                         sleep(3);
                         response_buffer_updated = 0;
+                        memset(response_buffer, '\0', BUFSIZ*sizeof(char));
                         pthread_mutex_unlock(&response_buffer_mutex);
                         draw_login_win(env, err, socket_fd, file, response_buffer);
                         done = true;
@@ -204,6 +197,7 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FIL
                         done = true;
                     }
                     response_buffer_updated = 0;
+                    memset(response_buffer, '\0', BUFSIZ*sizeof(char));
                     pthread_mutex_unlock(&response_buffer_mutex);
 //                    draw_register_window(env, err, socket_fd);
 //                    done = true;
@@ -280,7 +274,6 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
 {
     int x, y, username_x, username_y, password_x, password_y, displayname_x, displayname_y, username_len, password_len, displayname_len;
     char username_register[20], displayname[20], password[20];
-    char ETX[3] = "\x03";
     char *buffer = malloc(sizeof(char) * MAX_SIZE);
     dc_memset(env, buffer, 0, sizeof(char) * MAX_SIZE);
     register_win = newwin(12, 40, (LINES - 12) / 2, (COLS - 40) / 2);
@@ -413,6 +406,7 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
                         wrefresh(register_win);
                         sleep(2);
                         response_buffer_updated = 0;
+                        memset(response_buffer, '\0', BUFSIZ*sizeof(char));
                         pthread_mutex_unlock(&response_buffer_mutex);
                         draw_register_window(env, err, socket_fd, file, response_buffer);
                         refresh();
@@ -423,6 +417,7 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
                         wrefresh(register_win);
                         sleep(1);
                         response_buffer_updated = 0;
+                        memset(response_buffer, '\0', BUFSIZ*sizeof(char));
                         pthread_mutex_unlock(&response_buffer_mutex);
                         draw_login_win(env, err, socket_fd, file, response_buffer);
                         refresh();
@@ -487,10 +482,8 @@ void* input_handler(void* arg) {
     time_t time_send = time(NULL);
     uint8_t send_time = time_send;
     char message[1024];
-    char ETX[3] = "\x03";
     dc_memset(env, input_buffer, 0, sizeof(input_buffer));
     draw_menu(menu_win, menu_highlight, MENU_ITEMS);
-    current_chat = dc_malloc(env, err,sizeof(char) * 20);
     while (!quit) {
         ch = getch();
 
@@ -516,7 +509,7 @@ void* input_handler(void* arg) {
                 case KEY_ENTER:
                 case '\n':
                 case '\r':
-                    handle_menu_selection(env, err, socket_fd, menu_highlight, display_name, current_chat);
+                    handle_menu_selection(env, err, socket_fd, menu_highlight);
                     break;
                 case '\t': // Press 'Tab' to switch focus between input and menu
                     menu_focused = !menu_focused;
@@ -535,20 +528,28 @@ void* input_handler(void* arg) {
                 case KEY_ENTER:
                 case '\n':
                 case '\r':
-                    snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
-                             display_name, ETX, current_chat, ETX,
-                             input_buffer, ETX, send_time, ETX);
-                    wprintw(input_win, "%s", message);
-                    send_create_message(env, err, socket_fd, message);
-                    wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));
-                    werase(input_win);
-                    box(input_win, 0, 0);
-                    wrefresh(input_win);
-                    input_idx = 0;
-                    dc_memset(env, input_buffer, 0, sizeof(input_buffer));
-                    mvwprintw(input_win, 1, 1, "Enter message: ");
-                    wrefresh(input_win);
-                    refresh();
+                    if(input_buffer[0] == '/')
+                    {
+                        command_wrapper(env, err, file, socket_fd, input_buffer, response_buffer);
+                    }
+                    else
+                    {
+
+                        snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
+                                 display_name, ETX, current_channel, ETX,
+                                 input_buffer, ETX, send_time, ETX);
+                        wprintw(input_win, "%s", message);
+                        send_create_message(env, err, socket_fd, message);
+                        wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));
+                        werase(input_win);
+                        box(input_win, 0, 0);
+                        wrefresh(input_win);
+                        input_idx = 0;
+                        dc_memset(env, input_buffer, 0, sizeof(input_buffer));
+                        mvwprintw(input_win, 1, 1, "Enter message: ");
+                        wrefresh(input_win);
+                        refresh();
+                    }
                     break;
                 case KEY_BACKSPACE:
                 case KEY_DC:
@@ -592,6 +593,7 @@ void* input_handler(void* arg) {
             fflush(file);
             setbuf(file, NULL);
             response_buffer_updated = 0;
+            memset(response_buffer, '\0', BUFSIZ*sizeof(char));
             pthread_mutex_unlock(&response_buffer_mutex);
         }
 
@@ -602,3 +604,54 @@ void* input_handler(void* arg) {
     }
     return NULL;
 }
+
+void command_wrapper(struct dc_env *env, struct dc_error *err, FILE *file, int socket_fd, char *command, char *response_buffer)
+{
+    char *operation;
+    char *the_rest;
+
+    operation = strtok_r(command, " ", &the_rest);
+    if(dc_strcmp(env, operation, "/join") == 0)
+    {
+        write_simple_debug_msg(file, "calling join_channel_wrapper...\n");
+        join_channel_wrapper(env, err, file, socket_fd, the_rest, response_buffer);
+    }
+    else
+    {
+
+    }
+}
+
+void join_channel_wrapper(struct dc_env *env, struct dc_error *err, FILE *file, int socket_fd, char *channel_name, char *response_buffer)
+{
+    //Channel name etx 0 etx 0 etx 1 etx 1 etx display-name etx 0 etx 0 etx
+    char *buffer = dc_malloc(env, err, BUFSIZ* sizeof(char));
+    //send update_channel dispatch containing username and channel name
+    sprintf(buffer, "%s%s%d%s%d%s%d%s%d%s%s%s%d%s%d%s",
+            channel_name, ETX, 0, ETX, 0, ETX, 1, ETX, 1, ETX, display_name, ETX, 0, ETX, 0, ETX);
+    send_update_channel(env, err, socket_fd, buffer);
+    while(!response_buffer_updated);
+    //call handle_update_channel
+    struct arg options;
+    memset(&options, 0, sizeof(struct arg));
+    options.env = env;
+    options.error = err;
+    options.debug_log_file = file;
+    pthread_mutex_lock(&response_buffer_mutex);
+    write_simple_debug_msg(file, "calling handle_update_channel_response...\n");
+    int status = handle_update_channel_response(&options, response_buffer);
+    if(status == ALL_GOOD)
+    {
+        //zero out values in current_channel, strcpy chanel_name into current_channel
+        memset(current_channel, '\0', 20* sizeof(char));
+        strcpy(current_channel, channel_name);
+    }
+    else
+    {
+        //TODO: write in the window that the join failed
+        write_simple_debug_msg(file, "join channel failed\n");
+    }
+    pthread_mutex_unlock(&response_buffer_mutex);
+    free(buffer);
+}
+

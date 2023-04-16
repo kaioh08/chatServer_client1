@@ -29,6 +29,8 @@ void handle_server_read(struct arg * options, struct binary_header_field * binar
 void handle_server_update(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
 void handle_server_delete(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
 
+int handle_update_channel_response(struct arg *options, char *body);
+
 int handle_create_user_response(struct arg *options, char *body);
 int handle_create_channel_response(struct arg *options, char *body);
 int handle_create_message_response(struct arg *options, char *body);

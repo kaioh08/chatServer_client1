@@ -50,6 +50,10 @@ int main(int argc, char *argv[])
     response_buffer_updated = 0;
     char *response_buffer = dc_malloc(env1, err1, BUFFER_SIZE*sizeof(char));
     struct binary_header_field *b_header = dc_malloc(env1, err1, sizeof(struct binary_header_field));
+    display_name = dc_malloc(env1, err1, 20* sizeof(char));
+    memset(display_name, '\0', 20* sizeof(char));
+    current_channel = dc_malloc(env1, err1, 20* sizeof(char));
+    memset(current_channel, '\0', 20* sizeof(char));
 
     curs_set(0);
     start_color();

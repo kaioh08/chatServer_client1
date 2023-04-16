@@ -20,11 +20,10 @@
 #define MENU_ITEMS 5
 #define MAX_SIZE 1024
 
-void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd, char *display_name, char *current_chat)
+void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd)
 {
     WINDOW *create_chat_win;
     bool is_private = false;
-    char ETX[3] = "\x03";
     bool menu_focused = false;
     char chat_name[MAX_NAME_LENGTH + 1];
     char password[MAX_PASSWORD_LENGTH + 1];
@@ -94,7 +93,7 @@ void create_new_chat(struct dc_env *env, struct dc_error *err, int socket_fd, ch
                         char request_body[256] = {0};
                         snprintf(request_body, 256, "%s%s%s%s%c%s", chat_name, ETX, display_name, ETX, publicity, ETX);
                         send_create_channel(env, err, socket_fd, request_body);
-                        dc_strcpy(env, current_chat, chat_name);
+                        dc_strcpy(env, current_channel, chat_name);
 //                        wprintw(create_chat_win, "Chat name: %s, publicity: %c", current_chat, publicity);
                         wrefresh(create_chat_win);
                         refresh();
@@ -282,12 +281,11 @@ void show_active_chats(struct dc_env *env, struct dc_error *err, int socket_fd)
 //    menu_focused = true;
 }
 
-void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice, char *display_name,
-                           char *current_chat)
+void handle_menu_selection(struct dc_env *env, struct dc_error *err, int socket_fd, int choice)
 {
     switch (choice) {
         case 0: // Create new chat
-            create_new_chat(env, err, socket_fd, display_name, current_chat);
+            create_new_chat(env, err, socket_fd);
             break;
         case 1: // Show list of active chats
             show_active_chats(env, err, socket_fd);

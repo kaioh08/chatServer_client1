@@ -93,4 +93,8 @@ void clean_up(void);
 
 void* input_handler(void* arg);
 
+void command_wrapper(struct dc_env *env, struct dc_error *err, FILE *file, int socket_fd, char *command, char *response_buffer);
+
+void join_channel_wrapper(struct dc_env *env, struct dc_error *err, FILE *file, int socket_fd, char *channel_name, char *response_buffer);
+
 #endif //PROCESS_SERVER_GUI_H

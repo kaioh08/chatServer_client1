@@ -120,6 +120,7 @@ void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct a
         {
 //          TODO:  handle_server_update(options, b_header, body);
             write_simple_debug_msg(options->debug_log_file, "\ncannot call handle_server_update()! (not implemented)\n");
+            handle_server_update(options, b_header, body);
             break;
         }
         case DESTROY:
@@ -134,6 +135,7 @@ void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct a
         }
     }
 }
+
 
 void handle_server_request(struct arg * options, struct binary_header_field * binaryHeaderField, char * body) {
     switch (binaryHeaderField->type)
@@ -205,7 +207,11 @@ int handle_create_auth_response(struct arg *options, char *body)
     {
         char buffer[1024];
         // “200” ETX display-name ETX privilege-level ETX channel-name-list
-        char * display_name = dc_strtok(options->env, NULL, "\3");
+        char * d_name = dc_strtok(options->env, NULL, "\3");
+        if(d_name != NULL)
+        {
+            strcpy(display_name, d_name);
+        }
         char * privilege_level = dc_strtok(options->env, NULL, "\3");
         char * channel_name_list_size = dc_strtok(options->env, NULL, "\3");
 
@@ -417,4 +423,32 @@ void handle_server_read(struct arg * options, struct binary_header_field * binar
         default:
             break;
     }
+}
+
+void handle_server_update(struct arg * options, struct binary_header_field * binaryHeaderField, char * body)
+{
+    switch (binaryHeaderField->object) {
+        case USER:
+            //TODO: handle_update_user_response(options, body);
+            write_simple_debug_msg(options->debug_log_file, "handle_update_user_response not implemented!\n");
+            break;
+        case CHANNEL:
+            handle_update_channel_response(options, body);
+            break;
+        case MESSAGE:
+            //TODO: handle_update_message_response(options, body);
+            write_simple_debug_msg(options->debug_log_file, "handle_update_message_response not implemented!\n");
+            break;
+        case AUTH:
+            //TODO: handle_update_auth_response(options, body);
+            write_simple_debug_msg(options->debug_log_file, "handle_update_auth_response not implmented!\n");
+            break;
+        default:
+            break;
+    }
+}
+
+int handle_update_channel_response(struct arg *options, char *body)
+{
+    //return response code; in input handler, display message associated with response code
 }
