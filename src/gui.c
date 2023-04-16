@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include "processor_utility.h"
 #include "menu_functions.h"
-
+#include "handling-response.h"
 
 #define MAX_SIZE 1024
 #define INPUT_HEIGHT 3
@@ -57,7 +57,7 @@ void remove_highlight(WINDOW *win, int y, int x, const char *str) {
     mvwprintw(win, y, x, str);
 }
 
-void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
+void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FILE *file, char *response_buffer)
 {
     size_t x, y, login_x, login_y, password_x, password_y;
     size_t login_len, password_len;
@@ -147,7 +147,7 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                     int newCh = getch();
                     if(newCh =='\n')
                     {
-                        draw_register_window(env, err, socket_fd);
+                        draw_register_window(env, err, socket_fd, file, response_buffer);
                         done = true;
                     }
                 }
@@ -175,23 +175,36 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd)
                 if (dc_strlen(env, buffer) < MAX_SIZE)
                 {
                     send_create_auth(env, err, socket_fd, buffer);
-//                    response = get_response_code(env, err, socket_fd);
-//                    if (response != 200)
-//                    {
-//                        mvprintw(y - 2, x / 2 - 15, "Error: invalid credentials");
-//                        wrefresh(login_win);
-//                        sleep(3);
-//                        draw_login_win(env, err, socket_fd);
-//                        done = true;
-//                    } else {
-//                        mvprintw(y - 2, x / 2 - 15, "Success: logged in");
-//                        wrefresh(login_win);
-////                        display_name = malloc(sizeof(char) * strlen(username_login) + 1);
-////                        strcpy(display_name, username_login);
-//                        init_windows(MENU_ITEMS);
-//                        refresh();
-//                        done = true;
-//                    }
+                    while(!response_buffer_updated);
+                    struct arg options;
+                    memset(&options, 0, sizeof(struct arg));
+                    options.env = env;
+                    options.error = err;
+                    options.debug_log_file = file;
+                    pthread_mutex_lock(&response_buffer_mutex);
+                    int status = handle_create_auth_response(&options, response_buffer);
+                    if (status != 200)
+                    {
+                        mvprintw(y - 2, x / 2 - 15, "Error: invalid credentials");
+                        wrefresh(login_win);
+                        sleep(3);
+                        response_buffer_updated = 0;
+                        pthread_mutex_unlock(&response_buffer_mutex);
+                        draw_login_win(env, err, socket_fd, file, response_buffer);
+                        done = true;
+                    }
+                    else
+                    {
+                        mvprintw(y - 2, x / 2 - 15, "Success: logged in");
+                        wrefresh(login_win);
+//                        display_name = malloc(sizeof(char) * strlen(username_login) + 1);
+//                        strcpy(display_name, username_login);
+                        init_windows(MENU_ITEMS);
+                        refresh();
+                        done = true;
+                    }
+                    response_buffer_updated = 0;
+                    pthread_mutex_unlock(&response_buffer_mutex);
 //                    draw_register_window(env, err, socket_fd);
 //                    done = true;
                 } else
@@ -263,60 +276,7 @@ void quit(void)
     exit(0);
 }
 
-//long get_response_code(struct dc_env *env, struct dc_error *err, int socket_fd)
-//{
-//    uint32_t header;
-//    char body[MAX_SIZE];
-//    long response;
-//    ssize_t n;
-//
-//    // receive header from server
-//    n = read(socket_fd, &header, sizeof(header));
-//    if (n < 0) {
-//        perror("error");
-//        exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
-//    }
-//
-//    struct binary_header * binaryHeaderField = deserialize_header(header);
-//
-//    printf("RECEIVED FROM SERVER");
-//    // print deserialized header
-////    fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
-////    fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
-////    fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
-////    fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
-//
-//    // Read body and clear buffer
-//    read(socket_fd, &body, MAX_SIZE);
-//
-//    // Response is 200\0x3name\0x3
-//    // get it the name and response code from the body
-//    char *response_code = dc_strtok(env,body, "\x3");
-//    char *name = dc_strtok(env, NULL, "\x3");
-//
-//    // assign name to global variable that is not malloced yet
-//    display_name = dc_malloc(env, err, dc_strlen(env, name) + 1);
-//    dc_strcpy(env, display_name, name);
-//
-//
-//    // convert response code to long
-//    response = strtol(response_code, NULL, 10);
-//
-//    // print response code
-//    fprintf(stderr, "Response Code: %ld\n", response);
-//
-//    // print name
-//    fprintf(stderr, "Name: %s\n", name);
-//
-//    // free memory
-//    free(binaryHeaderField);
-//    dc_memset(env, body, 0, MAX_SIZE);
-//
-//
-//    return response;
-//}
-
-void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd)
+void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd, FILE *file, char *response_buffer)
 {
     int x, y, username_x, username_y, password_x, password_y, displayname_x, displayname_y, username_len, password_len, displayname_len;
     char username_register[20], displayname[20], password[20];
@@ -439,25 +399,35 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
                 {
 //                    init_windows();
                     send_create_user(env, err, socket_fd, buffer);
-//                    long response = get_response_code(env, err, socket_fd);
-//                    if(response != 201)
-//                    {
-//                        mvprintw(displayname_y + 6, x / 2 - 15, "Error: display_name already exists");
-//                        wrefresh(register_win);
-//                        sleep(2);
-//                        draw_register_window(env, err, socket_fd);
-//                        refresh();
-//                    }
-//                    else
-//                    {
-//                        mvprintw(displayname_y + 6, x / 2 - 15, "Registration successful");
-//                        wrefresh(register_win);
-//                        sleep(1);
-//                        draw_login_win(env, err, socket_fd);
-//                        refresh();
-//                        done=true;
-//                    }
-//                    done = true;
+                    while(!response_buffer_updated);
+                    struct arg options;
+                    memset(&options, 0, sizeof(struct arg));
+                    options.env = env;
+                    options.error = err;
+                    options.debug_log_file = file;
+                    pthread_mutex_lock(&response_buffer_mutex);
+                    int status = handle_create_user_response(&options, response_buffer);
+                    if (status != 201)
+                    {
+                        mvprintw(displayname_y + 6, x / 2 - 15, "Error: display_name already exists");
+                        wrefresh(register_win);
+                        sleep(2);
+                        response_buffer_updated = 0;
+                        pthread_mutex_unlock(&response_buffer_mutex);
+                        draw_register_window(env, err, socket_fd, file, response_buffer);
+                        refresh();
+                    }
+                    else
+                    {
+                        mvprintw(displayname_y + 6, x / 2 - 15, "Registration successful");
+                        wrefresh(register_win);
+                        sleep(1);
+                        response_buffer_updated = 0;
+                        pthread_mutex_unlock(&response_buffer_mutex);
+                        draw_login_win(env, err, socket_fd, file, response_buffer);
+                        refresh();
+                        done=true;
+                    }
                 } else
                 {
                     // handle buffer overflow
@@ -508,6 +478,8 @@ void* input_handler(void* arg) {
     response_buffer = args->response_buffer;
     b_header = args->b_header;
     file = args->debug_log_file;
+
+    fprintf(file, "input_handler started\n");
 
     bool quit = false;
     int input_idx = 0;

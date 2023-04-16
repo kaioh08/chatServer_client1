@@ -9,6 +9,7 @@
 #include <dc_error/error.h>
 #include <ncurses.h>
 #include "global_vars.h"
+#include "processor_utility.h"
 
 /**
  * Draws login window, takes user input and sends it to server.
@@ -17,7 +18,7 @@
  * @param err dc_error
  * @param socket_fd socket file descriptor
  */
-void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd);
+void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FILE *file, char *response_buffer);
 
 /**
  * Draws menu options
@@ -33,7 +34,7 @@ void draw_menu(WINDOW *win, int highlight, int number_of_items);
  * @param err dc_error
  * @param socket_fd socket file descriptor
  */
-void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd);
+void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_fd, FILE *file, char *response_buffer);
 
 /**
  * Highlights menu option in menu window and draws it.

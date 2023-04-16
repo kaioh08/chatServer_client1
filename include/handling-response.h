@@ -3,6 +3,7 @@
 
 #include "processor_utility.h"
 #include "global_vars.h"
+#include "gui.h"
 
 void clear_debug_file_buffer(FILE * debug_log_file);
 
@@ -15,10 +16,10 @@ void handle_server_read(struct arg * options, struct binary_header_field * binar
 void handle_server_update(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
 void handle_server_delete(struct arg * options, struct binary_header_field * binaryHeaderField, char * body);
 
-void handle_create_user_response(struct arg *options, char *body);
+int handle_create_user_response(struct arg *options, char *body);
 void handle_create_channel_response(struct arg *options, char *body);
 void handle_create_message_response(struct arg *options, char *body);
-void handle_create_auth_response(struct arg *options, char *body);
+int handle_create_auth_response(struct arg *options, char *body);
 
 void handle_read_user_response(struct arg *options, char *body);
 void handle_read_channel_response(struct arg *options, char *body);

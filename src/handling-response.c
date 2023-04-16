@@ -9,6 +9,14 @@
 
 #define BASE 10
 
+void write_simple_debug_msg(FILE *file, const char *str)
+{
+    pthread_mutex_lock(&debug_file_mutex);
+    fprintf(file, "%s\n", str);
+    clear_debug_file_buffer(file);
+    pthread_mutex_unlock(&debug_file_mutex);
+}
+
 void clear_debug_file_buffer(FILE * debug_log_file)
 {
     fflush(debug_log_file);
@@ -29,44 +37,66 @@ void *read_message_handler(void *arg)
     fd = args->socket_fd;
     response_buffer = args->response_buffer;
     b_header = args->b_header;
+    file = args->debug_log_file;
     DC_TRACE(env);
+
+    write_simple_debug_msg(file, "read_message_handler started\n");
+    fd_set read_fds;
+    struct timeval tv;
+    int ret;
+
+    tv.tv_sec = 0;
+    tv.tv_usec = 5000;
 
     ssize_t nread;
 
     while(true)
     {
-        fprintf(file, "Anything new?\n");
-        clear_debug_file_buffer(file);
-        uint32_t unprocessed_binary_header;
-        while(response_buffer_updated == 1);
-        pthread_mutex_lock(&socket_mutex);
-        nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint8_t)); //depending on how deserialize_header() works, the nbytes might have to change
-        if (nread < 0) {
-            fprintf(file, "Read failed\n");
-            clear_debug_file_buffer(file);
+        FD_ZERO(&read_fds);
+        FD_SET(fd, &read_fds);
+//        write_simple_debug_msg(file, "Anything new?\n");
+
+        ret = select(fd + 1, &read_fds, NULL, NULL, &tv);
+
+        if (ret == -1) {
+            write_simple_debug_msg(file, "Select failed\n");
         }
-        else if (nread == sizeof(uint8_t))
+        else if (ret == 0)
         {
-            fprintf(file, "got sth\n");
-            clear_debug_file_buffer(file);
-            //when fd has stuff, read the first few bytes to get the header fields
-            pthread_mutex_lock(&response_buffer_mutex);
-            deserialize_header(env, err, fd, b_header, unprocessed_binary_header);
-            //read the dispatch after getting the binary header
-            nread = dc_read(env, err, fd, response_buffer, b_header->body_size);
-            if(nread != b_header->body_size)
-            {
-                fprintf(file, "read failed at reading body\n");
-                clear_debug_file_buffer(file);
-            }
-            pthread_mutex_unlock(&socket_mutex);
-            fprintf(file, "Received response:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
-                    b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
-            clear_debug_file_buffer(file);
-            response_buffer_updated = 1;
-            pthread_mutex_unlock(&response_buffer_mutex);
-            //parse through the dispatch, call the right response handler
+            // Timeout expired
+//            write_simple_debug_msg(file, "Timeout\n");
         }
+        else
+        {
+            uint32_t unprocessed_binary_header;
+            while(response_buffer_updated == 1);
+            pthread_mutex_lock(&socket_mutex);
+            nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint8_t)); //depending on how deserialize_header() works, the nbytes might have to change
+            if (nread < 0) {
+                write_simple_debug_msg(file, "Read failed\n");
+            }
+            else if (nread == sizeof(uint8_t))
+            {
+                write_simple_debug_msg(file, "got sth\n");
+                //when fd has stuff, read the first few bytes to get the header fields
+                pthread_mutex_lock(&response_buffer_mutex);
+                deserialize_header(env, err, fd, b_header, unprocessed_binary_header);
+                //read the dispatch after getting the binary header
+                char buffer[1024];
+                nread = dc_read_fully(env, err, fd, buffer, b_header->body_size);
+                buffer[b_header->body_size] = '\0';
+                strcpy(response_buffer, buffer);
+                pthread_mutex_unlock(&socket_mutex);
+                pthread_mutex_lock(&debug_file_mutex);
+                fprintf(file, "Received response:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
+                        b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
+                clear_debug_file_buffer(file);
+                pthread_mutex_unlock(&debug_file_mutex);
+                response_buffer_updated = 1;
+                pthread_mutex_unlock(&response_buffer_mutex);
+            }
+        }
+
     }
 }
 
@@ -129,52 +159,44 @@ void handle_server_request(struct arg * options, struct binary_header_field * bi
  * Handle CREATE STUFF
  */
 
-void handle_create_user_response(struct arg *options, char *body)
+int handle_create_user_response(struct arg *options, char *body)
 {
     // 400 409 201
 
-    fprintf(options->debug_log_file, "HANDLING CREATE USER RESP\n");
-    clear_debug_file_buffer(options->debug_log_file);
+    write_simple_debug_msg(options->debug_log_file, "HANDLING CREATE USER RESP\n");
 
     char * response_code = dc_strtok(options->env, body, "\3");
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
-        fprintf(options->debug_log_file, "Fields are invalid\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
+        write_simple_debug_msg(options->debug_log_file, "Fields are invalid\n");
+        return 400;
     } else if (dc_strcmp(options->env, response_code, "409") == 0) {
-        fprintf(options->debug_log_file, "NON UNIQUE CREDENTIALS\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "Username or email already exists\n", dc_strlen(options->env, "Username or email already exists\n"));
+        write_simple_debug_msg(options->debug_log_file, "NON UNIQUE CREDENTIALS\n");
+        return 409;
     } else if (dc_strcmp(options->env, response_code, "201") == 0) {
-        fprintf(options->debug_log_file, "CREATE USER SUCCESS\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
+        write_simple_debug_msg(options->debug_log_file, "CREATE USER SUCCESS\n");
+        return 201;
     } else {
-        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
+        write_simple_debug_msg(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        return -1;
     }
 }
 
-void handle_create_auth_response(struct arg *options, char *body)
+int handle_create_auth_response(struct arg *options, char *body)
 {
     // 400 403 200
-    fprintf(options->debug_log_file, "HANDLING CREATE USER AUTH RESP\n");
-    clear_debug_file_buffer(options->debug_log_file);
+    write_simple_debug_msg(options->debug_log_file, "HANDLING CREATE USER AUTH RESP\n");
 
     char * response_code = dc_strtok(options->env, body, "\3");
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
-        fprintf(options->debug_log_file, "Fields are invalid\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
+        write_simple_debug_msg(options->debug_log_file, "Fields are invalid\n");
+        return 400;
     } else if (dc_strcmp(options->env, response_code, "403") == 0)
     {
-        fprintf(options->debug_log_file, "User account not found\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "User account not found\n", dc_strlen(options->env, "User account not found\n"));
+        write_simple_debug_msg(options->debug_log_file, "User account not found\n");
+        return 403;
     } else if (dc_strcmp(options->env, response_code, "200") == 0)
     {
         char buffer[1024];
@@ -183,7 +205,7 @@ void handle_create_auth_response(struct arg *options, char *body)
         char * privilege_level = dc_strtok(options->env, NULL, "\3");
         char * channel_name_list_size = dc_strtok(options->env, NULL, "\3");
 
-        fprintf(options->debug_log_file, "CREATE USER AUTH SUCCESS\n");
+        write_simple_debug_msg(options->debug_log_file, "CREATE USER AUTH SUCCESS\n");
         fprintf(options->debug_log_file, "DisplayName: %s\n", display_name);
 //        fprintf(options->debug_log_file, "Privy Level: %s\n", privilege_level);
 //        fprintf(options->debug_log_file, "CHANNEL NUMBER: %s\n", channel_name_list_size);
@@ -204,10 +226,11 @@ void handle_create_auth_response(struct arg *options, char *body)
         clear_debug_file_buffer(options->debug_log_file);
 
         write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
+        return 200;
+
     } else {
-        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
+        write_simple_debug_msg(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        return -1;
     }
 }
 

@@ -56,12 +56,17 @@ void deserialize_header(struct dc_env *env, struct dc_error *err, int fd, struct
     b_header->version = (value >> 28) & 0x0F; // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     b_header->type = (value >> 24) & 0x0F;    // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
-    // read the remaining 3 bytes
-    dc_read_fully(env, err, fd, &header2, 3);
-    // Convert to network byte order
-    header2 = ntohl(header2);
-    b_header->object = (header2 >> 24) & 0xFF;  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-    b_header->body_size = (header2 >> 8) & 0xFFFF;     // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    // Check if the type is any of the pings or not
+    if (b_header->type != PINGUSER && b_header->type != PINGCHANNEL) {
+        // read the remaining 3 bytes
+        dc_read_fully(env, err, fd, &header2, 3);
+
+        // Convert to network byte order
+        header2 = ntohl(header2);
+
+        b_header->object = (header2 >> 24) & 0xFF;  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+        b_header->body_size = (header2 >> 8) & 0xFFFF;     // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    }
 
 }
 

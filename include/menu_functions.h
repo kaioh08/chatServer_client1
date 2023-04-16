@@ -9,11 +9,11 @@
 #include <dc_error/error.h>
 #include <ncurses.h>
 
-struct arg {
-    struct dc_env *env;
-    struct dc_error *error;
-    int socket_fd;
-};
+//struct arg {
+//    struct dc_env *env;
+//    struct dc_error *error;
+//    int socket_fd;
+//};
 
 /**
  * Draws create new chat window, takes user input channel name, publicity, and sends it to server.

@@ -30,7 +30,8 @@ enum Type {
     READ = 0x2,
     UPDATE = 0x3,
     DESTROY = 0x4,
-    PINGUSER = 0x9
+    PINGUSER = 0x9,
+    PINGCHANNEL = 0xa
 };
 
 enum Object {
@@ -68,9 +69,12 @@ struct read_handler_args{
     char *response_buffer;
     struct binary_header_field *b_header;
     int socket_fd;
+    FILE * debug_log_file;
 };
 
 typedef void (*message_handler)(void *arg);
+
+void write_simple_debug_msg(FILE *file, const char *str);
 
 void *read_message_handler(void *arg);
 void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct arg *options, struct binary_header_field *b_header, char *body);

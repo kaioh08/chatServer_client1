@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
     pthread_mutex_init(&mutex, NULL);
     pthread_mutex_init(&response_buffer_mutex, NULL);
     pthread_mutex_init(&socket_mutex, NULL);
+    pthread_mutex_init(&debug_file_mutex, NULL);
     pthread_t input_thread, message_thread;
     response_buffer_updated = 0;
     char *response_buffer = dc_malloc(env1, err1, BUFFER_SIZE*sizeof(char));
@@ -86,6 +87,7 @@ int main(int argc, char *argv[])
 //    }
 //    fprintf(stderr, "Child process received: %.*s", (int)num_read, buffer2);
 
+    FILE *file = dc_fopen(env1, err1, "debug_log.txt", "w");
     socket_fd1 = socket(AF_INET, SOCK_STREAM, 0);
     struct arg arg1;
     arg1.error = err1;
@@ -93,7 +95,7 @@ int main(int argc, char *argv[])
     arg1.socket_fd = socket_fd1;
     arg1.response_buffer = response_buffer;
     arg1.b_header = b_header;
-    arg1.debug_log_file = dc_fopen(env1, err1, "debug_log.txt", "a");
+    arg1.debug_log_file = file;
 
     struct read_handler_args arg2;
     arg2.err = err1;
@@ -101,6 +103,7 @@ int main(int argc, char *argv[])
     arg2.socket_fd = socket_fd1;
     arg2.response_buffer = response_buffer;
     arg2.b_header = b_header;
+    arg2.debug_log_file = file;
     if (socket_fd1 < 0)
     {
         perror("Failed to create socket");
@@ -127,9 +130,10 @@ int main(int argc, char *argv[])
     if (run_client) {
         fprintf(stderr, "Connected to server.\n");
         refresh();
-        draw_login_win(env1, err1, socket_fd1);
-        pthread_create(&input_thread, NULL, input_handler, &arg1);
+        fprintf(file, "Running Client\n");
         pthread_create(&message_thread, NULL, read_message_handler, &arg2);
+        draw_login_win(env1, err1, socket_fd1, file, response_buffer);
+        pthread_create(&input_thread, NULL, input_handler, &arg1);
     }
 
     free(env1);
@@ -141,7 +145,9 @@ int main(int argc, char *argv[])
     pthread_mutex_destroy(&mutex);
     pthread_mutex_destroy(&response_buffer_mutex);
     pthread_mutex_destroy(&socket_mutex);
+    pthread_mutex_destroy(&debug_file_mutex);
     close(socket_fd1);
 
     return EXIT_SUCCESS;
 }
+
