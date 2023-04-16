@@ -494,18 +494,6 @@ void* input_handler(void* arg) {
     while (!quit) {
         ch = getch();
 
-        if(response_buffer_updated)
-        {
-            pthread_mutex_lock(&response_buffer_mutex);
-            response_handler_wrapper(env, err, args, b_header, response_buffer);
-            fprintf(file, "Input Handler Got Sth:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
-                    b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
-            fflush(file);
-            setbuf(file, NULL);
-            response_buffer_updated = 0;
-            pthread_mutex_unlock(&response_buffer_mutex);
-        }
-
         pthread_mutex_lock(&mutex);
 
         if (menu_focused && menu_active) {
@@ -594,6 +582,17 @@ void* input_handler(void* arg) {
                     }
                     break;
             }
+        }
+        if(response_buffer_updated)
+        {
+            pthread_mutex_lock(&response_buffer_mutex);
+            fprintf(file, "Input Handler Got Sth:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
+                    b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
+            response_handler_wrapper(env, err, args, b_header, response_buffer);
+            fflush(file);
+            setbuf(file, NULL);
+            response_buffer_updated = 0;
+            pthread_mutex_unlock(&response_buffer_mutex);
         }
 
         pthread_mutex_unlock(&mutex);

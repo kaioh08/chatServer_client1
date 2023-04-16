@@ -106,27 +106,31 @@ void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct a
     {
         case CREATE:
         {
+            write_simple_debug_msg(options->debug_log_file, "\ncalling handle_server_create()\n");
             handle_server_create(options, b_header, body);
             break;
         }
         case READ:
         {
+            write_simple_debug_msg(options->debug_log_file, "\ncalling handle_server_read()\n");
             handle_server_read(options, b_header, body);
             break;
         }
         case UPDATE:
         {
 //          TODO:  handle_server_update(options, b_header, body);
+            write_simple_debug_msg(options->debug_log_file, "\ncannot call handle_server_update()! (not implemented)\n");
             break;
         }
         case DESTROY:
         {
 //          TODO:  handle_server_delete(options, b_header, body);
+            write_simple_debug_msg(options->debug_log_file, "\ncannot call handle_server_delete()! (not implemented)\n");
             break;
         }
         default:
         {
-            perror("bad type\n");
+            write_simple_debug_msg(options->debug_log_file, "\nbad type\n");
         }
     }
 }
@@ -169,13 +173,13 @@ int handle_create_user_response(struct arg *options, char *body)
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
         write_simple_debug_msg(options->debug_log_file, "Fields are invalid\n");
-        return 400;
+        return BAD_REQUEST;
     } else if (dc_strcmp(options->env, response_code, "409") == 0) {
         write_simple_debug_msg(options->debug_log_file, "NON UNIQUE CREDENTIALS\n");
-        return 409;
+        return NOT_UNIQUE;
     } else if (dc_strcmp(options->env, response_code, "201") == 0) {
         write_simple_debug_msg(options->debug_log_file, "CREATE USER SUCCESS\n");
-        return 201;
+        return CREATED;
     } else {
         write_simple_debug_msg(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
         return -1;
@@ -192,11 +196,11 @@ int handle_create_auth_response(struct arg *options, char *body)
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
         write_simple_debug_msg(options->debug_log_file, "Fields are invalid\n");
-        return 400;
+        return BAD_REQUEST;
     } else if (dc_strcmp(options->env, response_code, "403") == 0)
     {
         write_simple_debug_msg(options->debug_log_file, "User account not found\n");
-        return 403;
+        return FORBIDDEN;
     } else if (dc_strcmp(options->env, response_code, "200") == 0)
     {
         char buffer[1024];
@@ -226,7 +230,7 @@ int handle_create_auth_response(struct arg *options, char *body)
         clear_debug_file_buffer(options->debug_log_file);
 
         write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
-        return 200;
+        return ALL_GOOD;
 
     } else {
         write_simple_debug_msg(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
@@ -234,77 +238,66 @@ int handle_create_auth_response(struct arg *options, char *body)
     }
 }
 
-void handle_create_channel_response(struct arg *options, char *body)
+int handle_create_channel_response(struct arg *options, char *body)
 {
     // 400 404 403 409 201
-    fprintf(options->debug_log_file, "HANDLING CREATE CHANNEL RESP\n");
-    clear_debug_file_buffer(options->debug_log_file);
+    write_simple_debug_msg(options->debug_log_file, "HANDLING CREATE CHANNEL RESP\n");
 
     char * response_code = dc_strtok(options->env, body, "\3");
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
-        fprintf(options->debug_log_file, "Fields are invalid\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
+        write_simple_debug_msg(options->debug_log_file, "Fields are invalid\n");
+        return BAD_REQUEST;
     } else if (dc_strcmp(options->env, response_code, "404") == 0)
     {
-        fprintf(options->debug_log_file, "User account not found\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "User account not found\n", dc_strlen(options->env, "User account not found\n"));
+        write_simple_debug_msg(options->debug_log_file, "User account not found\n");
+        return NOT_FOUND;
     } else if (dc_strcmp(options->env, response_code, "403") == 0)
     {
-        fprintf(options->debug_log_file, "Name does not match\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "Sender name does Not match Display Name\n", dc_strlen(options->env, "Sender name does Not match Display Name\n"));
+        write_simple_debug_msg(options->debug_log_file, "Sender name does Not match Display Name\n");
+        return FORBIDDEN;
     } else if (dc_strcmp(options->env, response_code, "409") == 0)
     {
-        fprintf(options->debug_log_file, "Channel Name Not UNIQUE\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "Channel Name Not UNIQUE\n", dc_strlen(options->env, "Channel Name Not UNIQUE\n"));
+        write_simple_debug_msg(options->debug_log_file, "Channel Name Not UNIQUE\n");
+        return NOT_UNIQUE;
     } else if (dc_strcmp(options->env, response_code, "201") == 0)
     {
-        fprintf(options->debug_log_file, "CREATE CHANNEL SUCCESS\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
+        write_simple_debug_msg(options->debug_log_file, "CREATE CHANNEL SUCCESS\n");
+        return CREATED;
     } else {
-        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
+        write_simple_debug_msg(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        return -1;
     }
 
 }
 
-void handle_create_message_response(struct arg *options, char *body)
+int handle_create_message_response(struct arg *options, char *body)
 {
     // 400 404 403 201
 
-    fprintf(options->debug_log_file, "HANDLING CREATE MESSAGE RESP\n");
-    clear_debug_file_buffer(options->debug_log_file);
+    write_simple_debug_msg(options->debug_log_file, "HANDLING CREATE MESSAGE RESP\n");
 
     char * response_code = dc_strtok(options->env, body, "\3");
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
-        fprintf(options->debug_log_file, "Fields are invalid\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
+        write_simple_debug_msg(options->debug_log_file, "Fields are invalid\n");
+        return BAD_REQUEST;
     } else if (dc_strcmp(options->env, response_code, "404") == 0)
     {
-        fprintf(options->debug_log_file, "CHANNEL NOT FOUND\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "CHANNEL NOT FOUND\n", dc_strlen(options->env, "CHANNEL NOT FOUND\n"));
+        write_simple_debug_msg(options->debug_log_file, "CHANNEL NOT FOUND\n");
+        return NOT_FOUND;
     } else if (dc_strcmp(options->env, response_code, "403") == 0)
     {
-        fprintf(options->debug_log_file, "DISPLAY NAMES DONT MATCH\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "DISPLAY NAMES DONT MATCH\n", dc_strlen(options->env, "DISPLAY NAMES DONT MATCH\n"));
+        write_simple_debug_msg(options->debug_log_file, "DISPLAY NAMES DONT MATCH\n");
+        return FORBIDDEN;
     } else if (dc_strcmp(options->env, response_code, "201") == 0)
     {
-        fprintf(options->debug_log_file, "CREATE MESSAGE SUCCESS\n");
-        clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
-    }  else
+        write_simple_debug_msg(options->debug_log_file, "CREATE MESSAGE SUCCESS\n");
+        return CREATED;
+    }
+    else
     {
         char buffer[1024];
         // It's  a message to be displayed on the UI
@@ -322,7 +315,6 @@ void handle_create_message_response(struct arg *options, char *body)
 
         fprintf(options->debug_log_file, "Message Received %s\n", buffer);
         clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
     }
 }
 
@@ -330,15 +322,19 @@ void handle_server_create(struct arg * options, struct binary_header_field * bin
     switch (binaryHeaderField->object)
     {
         case USER:
+            write_simple_debug_msg(options->debug_log_file, "\ncalling handle_create_user_response\n");
             handle_create_user_response(options, body);
             break;
         case CHANNEL:
+            write_simple_debug_msg(options->debug_log_file, "\ncalling handle_create_channel_response\n");
             handle_create_channel_response(options, body);
             break;
         case MESSAGE:
+            write_simple_debug_msg(options->debug_log_file, "\ncalling handle_create_message_response\n");
             handle_create_message_response(options, body);
             break;
         case AUTH:
+            write_simple_debug_msg(options->debug_log_file, "\ncalling handle_create_auth_response\n");
             handle_create_auth_response(options, body);
             break;
         default:
