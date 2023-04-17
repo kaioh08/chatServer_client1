@@ -24,82 +24,82 @@ void clear_debug_file_buffer(FILE * debug_log_file)
     setbuf(debug_log_file, NULL);
 }
 
-void *read_message_handler(void *arg)
-{
-    struct dc_env *env;
-    struct dc_error *err;
-    int fd;
-    char *response_buffer;
-    struct binary_header_field *b_header;
-    FILE *file;
-    struct read_handler_args *args = (struct read_handler_args *) arg;
-    env = args->env;
-    err = args->err;
-    fd = args->socket_fd;
-    response_buffer = args->response_buffer;
-    b_header = args->b_header;
-    file = args->debug_log_file;
-    DC_TRACE(env);
-
-    write_simple_debug_msg(file, "read_message_handler started\n");
-    fd_set read_fds;
-    struct timeval tv;
-    int ret;
-
-    tv.tv_sec = 0;
-    tv.tv_usec = 5000;
-
-    ssize_t nread;
-
-    while(true)
-    {
-        FD_ZERO(&read_fds);
-        FD_SET(fd, &read_fds);
-//        write_simple_debug_msg(file, "Anything new?\n");
-
-        ret = select(fd + 1, &read_fds, NULL, NULL, &tv);
-
-        if (ret == -1) {
-            write_simple_debug_msg(file, "Select failed\n");
-        }
-        else if (ret == 0)
-        {
-            // Timeout expired
-//            write_simple_debug_msg(file, "Timeout\n");
-        }
-        else
-        {
-            uint32_t unprocessed_binary_header;
-            while(response_buffer_updated == 1);
-            pthread_mutex_lock(&socket_mutex);
-            nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint8_t)); //depending on how deserialize_header() works, the nbytes might have to change
-            if (nread < 0) {
-                write_simple_debug_msg(file, "Read failed\n");
-            }
-            else if (nread == sizeof(uint8_t))
-            {
-                write_simple_debug_msg(file, "got sth\n");
-                //when fd has stuff, read the first few bytes to get the header fields
-                pthread_mutex_lock(&response_buffer_mutex);
-                deserialize_header(env, err, fd, b_header, unprocessed_binary_header);
-                //read the dispatch after getting the binary header
-                char buffer[1024];
-                nread = dc_read_fully(env, err, fd, buffer, b_header->body_size);
-                buffer[b_header->body_size] = '\0';
-                strcpy(response_buffer, buffer);
-                pthread_mutex_unlock(&socket_mutex);
-                pthread_mutex_lock(&debug_file_mutex);
-                fprintf(file, "Received response:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
-                        b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
-                clear_debug_file_buffer(file);
-                pthread_mutex_unlock(&debug_file_mutex);
-                response_buffer_updated = 1;
-                pthread_mutex_unlock(&response_buffer_mutex);
-            }
-        }
-
-    }
-}
+//void *read_message_handler(void *arg)
+//{
+//    struct dc_env *env;
+//    struct dc_error *err;
+//    int fd;
+//    char *response_buffer;
+//    struct binary_header_field *b_header;
+//    FILE *file;
+//    struct read_handler_args *args = (struct read_handler_args *) arg;
+//    env = args->env;
+//    err = args->err;
+//    fd = args->socket_fd;
+//    response_buffer = args->response_buffer;
+//    b_header = args->b_header;
+//    file = args->debug_log_file;
+//    DC_TRACE(env);
+//
+//    write_simple_debug_msg(file, "read_message_handler started\n");
+//    fd_set read_fds;
+//    struct timeval tv;
+//    int ret;
+//
+//    tv.tv_sec = 0;
+//    tv.tv_usec = 5000;
+//
+//    ssize_t nread;
+//
+//    while(true)
+//    {
+//        FD_ZERO(&read_fds);
+//        FD_SET(fd, &read_fds);
+////        write_simple_debug_msg(file, "Anything new?\n");
+//
+//        ret = select(fd + 1, &read_fds, NULL, NULL, &tv);
+//
+//        if (ret == -1) {
+//            write_simple_debug_msg(file, "Select failed\n");
+//        }
+//        else if (ret == 0)
+//        {
+//            // Timeout expired
+////            write_simple_debug_msg(file, "Timeout\n");
+//        }
+//        else
+//        {
+//            uint32_t unprocessed_binary_header;
+//            while(response_buffer_updated == 1);
+//            pthread_mutex_lock(&socket_mutex);
+//            nread = dc_read(env, err, fd, &unprocessed_binary_header, sizeof(uint8_t)); //depending on how deserialize_header() works, the nbytes might have to change
+//            if (nread < 0) {
+//                write_simple_debug_msg(file, "Read failed\n");
+//            }
+//            else if (nread == sizeof(uint8_t))
+//            {
+//                write_simple_debug_msg(file, "got sth\n");
+//                //when fd has stuff, read the first few bytes to get the header fields
+//                pthread_mutex_lock(&response_buffer_mutex);
+//                deserialize_header(env, err, fd, b_header, unprocessed_binary_header);
+//                //read the dispatch after getting the binary header
+//                char buffer[1024];
+//                nread = dc_read_fully(env, err, fd, buffer, b_header->body_size);
+//                buffer[b_header->body_size] = '\0';
+//                strcpy(response_buffer, buffer);
+//                pthread_mutex_unlock(&socket_mutex);
+//                pthread_mutex_lock(&debug_file_mutex);
+//                fprintf(file, "Received response:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
+//                        b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
+//                clear_debug_file_buffer(file);
+//                pthread_mutex_unlock(&debug_file_mutex);
+//                response_buffer_updated = 1;
+//                pthread_mutex_unlock(&response_buffer_mutex);
+//            }
+//        }
+//
+//    }
+//}
 
 void response_handler_wrapper(struct dc_env *env, struct dc_error *err, struct arg *options, struct binary_header_field *b_header, char *body)
 {
