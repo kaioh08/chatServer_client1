@@ -83,14 +83,6 @@ int main(int argc, char *argv[])
         server_port = SERVER_PORT;
     }
 
-//    char buffer2[1024];
-//    ssize_t num_read = read(STDIN_FILENO, buffer2, sizeof(buffer2));
-//    if (num_read == -1) {
-//        perror("read failed");
-//        exit(EXIT_FAILURE);
-//    }
-//    fprintf(stderr, "Child process received: %.*s", (int)num_read, buffer2);
-
     FILE *file = dc_fopen(env1, err1, "debug_log.txt", "w");
     socket_fd1 = socket(AF_INET, SOCK_STREAM, 0);
     struct arg arg1;

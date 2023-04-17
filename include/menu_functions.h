@@ -1,19 +1,9 @@
-//
-// Created by Vasily Shorin on 2023-04-14.
-//
-
 #ifndef PROCESS_SERVER_MENU_FUNCTIONS_H
 #define PROCESS_SERVER_MENU_FUNCTIONS_H
 
 #include <dc_env/env.h>
 #include <dc_error/error.h>
 #include <ncurses.h>
-
-//struct arg {
-//    struct dc_env *env;
-//    struct dc_error *error;
-//    int socket_fd;
-//};
 
 /**
  * Draws create new chat window, takes user input channel name, publicity, and sends it to server.

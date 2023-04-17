@@ -1,7 +1,3 @@
-//
-// Created by Vasily Shorin on 2023-04-14.
-//
-
 #include <dc_c/dc_stdlib.h>
 #include <dc_c/dc_string.h>
 #include <string.h>

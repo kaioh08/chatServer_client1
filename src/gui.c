@@ -1,7 +1,3 @@
-//
-// Created by Vasily Shorin on 2023-04-14.
-//
-
 #include <dc_env/env.h>
 #include <dc_error/error.h>
 #include <ncurses.h>
@@ -158,7 +154,6 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FIL
                     // if login button is pressed, call login function
                     if(newCh =='\n')
                     {
-//                        send_create_auth(env, err, socket_fd, buffer);
                         done = true;
                     }
                 }
@@ -190,8 +185,6 @@ void draw_login_win(struct dc_env *env, struct dc_error *err, int socket_fd, FIL
                     {
                         mvprintw(y - 2, x / 2 - 15, "Success: logged in");
                         wrefresh(login_win);
-//                        display_name = malloc(sizeof(char) * strlen(username_login) + 1);
-//                        strcpy(display_name, username_login);
                         init_windows(MENU_ITEMS);
                         refresh();
                         done = true;
@@ -263,7 +256,6 @@ void init_input(void) {
     refresh();
 }
 
-//TODO: change to handle logout
 void quit(void)
 {
     endwin();
@@ -298,9 +290,6 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
     mvprintw(displayname_y, displayname_x, "Display Name: ");
 
     mvprintw(password_y, password_x, "Password: ");
-
-
-
 
     mvprintw(displayname_y + 2, x / 2 - 10, "  Register  ");
     mvprintw(displayname_y + 2, x / 2, "  Cancel  ");
@@ -339,7 +328,6 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
     dc_strcat(env, buffer, ETX);
 
     buffer[dc_strlen(env, buffer)] = '\0';
-
 
     // highlight register button
     attron(A_REVERSE);
@@ -390,7 +378,6 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
             case '\n':
                 if (dc_strlen(env, buffer) < MAX_SIZE)
                 {
-//                    init_windows();
                     send_create_user(env, err, socket_fd, buffer);
                     while(!response_buffer_updated);
                     struct arg options;
@@ -430,7 +417,6 @@ void draw_register_window(struct dc_env *env, struct dc_error *err, int socket_f
                 }
                 break;
             default:
-                // handle other key presses
                 break;
         }
         // consume newline character
@@ -488,7 +474,6 @@ void *read_message_handler(void *arg)
     {
         FD_ZERO(&read_fds);
         FD_SET(fd, &read_fds);
-//        write_simple_debug_msg(file, "Anything new?\n");
 
         ret = select(fd + 1, &read_fds, NULL, NULL, &tv);
 
@@ -497,8 +482,6 @@ void *read_message_handler(void *arg)
         }
         else if (ret == 0)
         {
-            // Timeout expired
-//            write_simple_debug_msg(file, "Timeout\n");
         }
         else
         {
@@ -520,25 +503,10 @@ void *read_message_handler(void *arg)
                 dc_read_fully(env, err, fd, buffer, b_header->body_size);
                 buffer[b_header->body_size] = '\0';
                 strcpy(response_buffer, buffer);
-                // the repnseons buffer return now like vasily eeeloo Sun Apr 16 22:57:29 2023 201^Cglobal
-                // change the repsinse buffer to be [vasily]: eeeloo [Sun Apr 16 22:57:29 2023 201]
-                // so that the message can be printed to the chat window
-//                char *token = strtok(response_buffer, " ");
-//                char *username = token;
-//                token = strtok(NULL, " ");
-//                char *message = token;
-//                token = strtok(NULL, " ");
-//                char *timestamp = token;
-//                token = strtok(NULL, " ");
-//                char *status_code = token;
-//                sprintf(response_buffer, "[%s]: %s [%s %s]", username, message, timestamp, status_code);
                 pthread_mutex_unlock(&socket_mutex);
                 pthread_mutex_lock(&debug_file_mutex);
                 fprintf(file, "Received response:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
                         b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
-//                mvwprintw(chat_win, 1, 1, "Received response:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
-//                        b_header->version, b_header->type, b_header->object, b_header->body_size, response_buffer);
-                // print to chat window what was received
                 mvwprintw(chat_win, 1, 1, "%s", response_buffer);
                 wrefresh(chat_win);
                 clear_debug_file_buffer(file);
@@ -713,9 +681,7 @@ void command_wrapper(struct dc_env *env, struct dc_error *err, FILE *file, int s
         join_channel_wrapper(env, err, file, socket_fd, the_rest, response_buffer);
     }
     else
-    {
-
-    }
+    {}
 }
 
 void join_channel_wrapper(struct dc_env *env, struct dc_error *err, FILE *file, int socket_fd, char *channel_name, char *response_buffer)

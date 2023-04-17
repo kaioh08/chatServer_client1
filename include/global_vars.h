@@ -1,7 +1,3 @@
-//
-// Created by Colin Lam on 2023-04-16.
-//
-
 #ifndef PROCESS_SERVER_GLOBAL_VARS_H
 #define PROCESS_SERVER_GLOBAL_VARS_H
 

@@ -1,7 +1,3 @@
-//
-// Created by Vasily Shorin on 2023-04-14.
-//
-
 #ifndef PROCESS_SERVER_GUI_H
 #define PROCESS_SERVER_GUI_H
 
