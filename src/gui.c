@@ -480,7 +480,7 @@ void* input_handler(void* arg) {
     int input_idx = 0;
     char input_buffer[COLS - 2];
     time_t time_send = time(NULL);
-    uint8_t send_time = time_send;
+//    uint8_t send_time = time_send;
     char message[1024];
     dc_memset(env, input_buffer, 0, sizeof(input_buffer));
     draw_menu(menu_win, menu_highlight, MENU_ITEMS);
@@ -535,9 +535,9 @@ void* input_handler(void* arg) {
                     else
                     {
 
-                        snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
+                        snprintf(message, sizeof(message), "%s%s%s%s%s%s%ld%s",
                                  display_name, ETX, current_channel, ETX,
-                                 input_buffer, ETX, send_time, ETX);
+                                 input_buffer, ETX, time_send, ETX);
                         wprintw(input_win, "%s", message);
                         send_create_message(env, err, socket_fd, message);
                         wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));

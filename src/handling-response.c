@@ -1,4 +1,5 @@
 #include "handling-response.h"
+#include "global_vars.h"
 #include <dc_c/dc_stdio.h>
 #include <dc_c/dc_string.h>
 #include <dc_posix/dc_unistd.h>
@@ -212,24 +213,32 @@ int handle_create_auth_response(struct arg *options, char *body)
         {
             strcpy(display_name, d_name);
         }
-        char * privilege_level = dc_strtok(options->env, NULL, "\3");
-        char * channel_name_list_size = dc_strtok(options->env, NULL, "\3");
+        char *privilege_level = dc_strtok(options->env, NULL, "\3");
+        char *channel_name_list_size_str = dc_strtok(options->env, NULL, "\3");
 
-        write_simple_debug_msg(options->debug_log_file, "CREATE USER AUTH SUCCESS\n");
+        fprintf(options->debug_log_file, "CREATE USER AUTH SUCCESS\n");
         fprintf(options->debug_log_file, "DisplayName: %s\n", display_name);
-//        fprintf(options->debug_log_file, "Privy Level: %s\n", privilege_level);
-//        fprintf(options->debug_log_file, "CHANNEL NUMBER: %s\n", channel_name_list_size);
+        fprintf(options->debug_log_file, "PrivilegeLevel: %s\n", privilege_level);
+        fprintf(options->debug_log_file, "ChannelNameListSize: %s\n", channel_name_list_size_str);
         clear_debug_file_buffer(options->debug_log_file);
 
         // OK GLOBAL, Channel1\0
-//        uint16_t channel_size = dc_uint16_from_str(options->env, options->err, channel_name_list_size, BASE);
         dc_strcpy(options->env, buffer, "OK ");
 
-//        for (int i = 0; i < channel_size; i++)
-//        {
-//            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
-//        }
-        dc_strcat(options->env, buffer, dc_strtok(options->env, "Test", "\3"));
+        int channel_name_list_size = atoi(channel_name_list_size_str);
+        for (int i = 0; i < channel_name_list_size; i++)
+        {
+            char *channel_name = dc_strtok(options->env, NULL, "\3");
+            if (channel_name != NULL)
+            {
+                if (i == 0) // first channel name in the list is the current chat
+                {
+                    strcpy(current_channel, channel_name);
+                }
+                dc_strcat(options->env, buffer, channel_name);
+                dc_strcat(options->env, buffer, ", ");
+            }
+        }
 
         dc_strcat(options->env, buffer, "\0");
         fprintf(options->debug_log_file, "UI RESPONSE: %s\n", buffer);
@@ -237,11 +246,14 @@ int handle_create_auth_response(struct arg *options, char *body)
 
         write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
         return ALL_GOOD;
-
-    } else {
+    }
+    else
+    {
         write_simple_debug_msg(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
         return -1;
     }
+
+
 }
 
 int handle_create_channel_response(struct arg *options, char *body)
