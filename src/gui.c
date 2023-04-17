@@ -517,7 +517,7 @@ void *read_message_handler(void *arg)
                 deserialize_header(env, err, fd, b_header, unprocessed_binary_header);
                 //read the dispatch after getting the binary header
                 char buffer[1024];
-                nread = dc_read_fully(env, err, fd, buffer, b_header->body_size);
+                dc_read_fully(env, err, fd, buffer, b_header->body_size);
                 buffer[b_header->body_size] = '\0';
                 strcpy(response_buffer, buffer);
                 // the repnseons buffer return now like vasily eeeloo Sun Apr 16 22:57:29 2023 201^Cglobal
@@ -573,8 +573,10 @@ void* input_handler(void* arg) {
     bool quit = false;
     int input_idx = 0;
     char input_buffer[COLS - 2];
-    time_t time_send = time(NULL);
-    uint8_t send_time = time_send;
+//    time_t time_send = time(NULL);
+//    uint8_t send_time = time_send;
+    char time_stamp[100];
+    sprintf(time_stamp, "%016lx\3", time(NULL));
     char message[1024];
     dc_memset(env, input_buffer, 0, sizeof(input_buffer));
     draw_menu(menu_win, menu_highlight, MENU_ITEMS);
@@ -629,12 +631,12 @@ void* input_handler(void* arg) {
                     else
                     {
 
-                        snprintf(message, sizeof(message), "%s%s%s%s%s%s%hhu%s",
+                        snprintf(message, sizeof(message), "%s%s%s%s%s%s%s%s",
                                  display_name, ETX, current_channel, ETX,
-                                 input_buffer, ETX, send_time, ETX);
+                                 input_buffer, ETX, time_stamp, ETX);
                         wprintw(input_win, "%s", message);
                         send_create_message(env, err, socket_fd, message);
-                        wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));
+//                        wprintw(chat_win, "%s %s %s", display_name, input_buffer, ctime(&time_send));
                         werase(input_win);
                         box(input_win, 0, 0);
                         wrefresh(input_win);
