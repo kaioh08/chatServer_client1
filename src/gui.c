@@ -520,13 +520,18 @@ void *read_message_handler(void *arg)
                 nread = dc_read_fully(env, err, fd, buffer, b_header->body_size);
                 buffer[b_header->body_size] = '\0';
                 strcpy(response_buffer, buffer);
-                // format the response buffer to be: [Username]: message [timestamp]
-//                char *username = strtok(response_buffer, ":");
-//                char *message = strtok(NULL, ":");
-//                char *timestamp = strtok(NULL, ":");
-//                char *formatted_response = malloc(1024);
-//                sprintf(formatted_response, "%s: %s [%s]", username, message, timestamp);
-//                strcpy(response_buffer, formatted_response);
+                // the repnseons buffer return now like vasily eeeloo Sun Apr 16 22:57:29 2023 201^Cglobal
+                // change the repsinse buffer to be [vasily]: eeeloo [Sun Apr 16 22:57:29 2023 201]
+                // so that the message can be printed to the chat window
+//                char *token = strtok(response_buffer, " ");
+//                char *username = token;
+//                token = strtok(NULL, " ");
+//                char *message = token;
+//                token = strtok(NULL, " ");
+//                char *timestamp = token;
+//                token = strtok(NULL, " ");
+//                char *status_code = token;
+//                sprintf(response_buffer, "[%s]: %s [%s %s]", username, message, timestamp, status_code);
                 pthread_mutex_unlock(&socket_mutex);
                 pthread_mutex_lock(&debug_file_mutex);
                 fprintf(file, "Received response:\nversion: %d\ntype: %d\nobject: %hhu\nbody size: %d\nbody: %s\n",
@@ -536,7 +541,6 @@ void *read_message_handler(void *arg)
                 // print to chat window what was received
                 mvwprintw(chat_win, 1, 1, "%s", response_buffer);
                 wrefresh(chat_win);
-
                 clear_debug_file_buffer(file);
                 pthread_mutex_unlock(&debug_file_mutex);
                 response_buffer_updated = 1;
